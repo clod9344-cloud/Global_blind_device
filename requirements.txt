@@ -1,0 +1,9 @@
+flask
+flask-cors
+requests
+numpy
+python-dotenv
+gunicorn
+pillow
+pyserial
+twilio
