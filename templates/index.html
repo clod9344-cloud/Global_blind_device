@@ -1,0 +1,2772 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+<title>VisionAssist AI v16</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg0:#06080f;--bg1:#0d1117;--bg2:#161b26;--bg3:#1e2535;
+  --accent:#00e5c8;--accent2:#6c63ff;--accent3:#ff4d6d;
+  --gold:#f0b429;--green:#22c55e;--orange:#fb923c;--sky:#38bdf8;
+  --purple:#a78bfa;--pink:#f472b6;
+  --text:#e8ecf3;--muted:#6b7a99;--border:rgba(255,255,255,.08);
+  --glass:rgba(255,255,255,.04);--shadow:0 8px 32px rgba(0,0,0,.5);
+  --r:14px;--r-sm:8px;--r-pill:999px;
+  --agent-bg:#080c14;--agent-border:rgba(0,229,200,.15);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg0);color:var(--text);min-height:100vh;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 80% 60% at 20% 0%,rgba(108,99,255,.12) 0%,transparent 60%),radial-gradient(ellipse 60% 40% at 80% 100%,rgba(0,229,200,.08) 0%,transparent 50%);pointer-events:none;z-index:0;}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:var(--bg1)}::-webkit-scrollbar-thumb{background:var(--accent2);border-radius:3px}
+.app{position:relative;z-index:1;max-width:1440px;margin:0 auto;padding:0 16px 120px}
+
+/* HEADER */
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:20px 0 12px;border-bottom:1px solid var(--border);margin-bottom:20px;flex-wrap:wrap;gap:12px;}
+.hdr-brand{display:flex;align-items:center;gap:12px}
+.hdr-logo{width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,var(--accent2),var(--accent));display:flex;align-items:center;justify-content:center;font-size:1.4rem;box-shadow:0 0 20px rgba(108,99,255,.4);}
+.hdr-title{font-size:1.5rem;font-weight:800;letter-spacing:-.5px;background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.hdr-sub{font-size:.72rem;color:var(--muted);margin-top:2px}
+.hdr-status{display:flex;align-items:center;gap:8px;font-size:.8rem;background:var(--glass);border:1px solid var(--border);padding:6px 14px;border-radius:var(--r-pill);}
+.hdr-dot{width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:.4;transform:scale(1)}50%{opacity:1;transform:scale(1.3)}}
+
+/* BANNER */
+.mode-banner{display:none;padding:10px 16px;border-radius:var(--r);background:rgba(255,77,109,.12);border:1px solid rgba(255,77,109,.4);font-size:.9rem;margin-bottom:16px;align-items:center;gap:10px;animation:fadeIn .3s ease;}
+.mode-banner.show{display:flex}
+.mode-banner i{color:var(--accent3)}
+
+/* TABS */
+.tabs{display:flex;gap:8px;margin-bottom:24px;flex-wrap:wrap}
+.tab-btn{padding:10px 22px;border:1px solid var(--border);border-radius:var(--r-pill);background:var(--glass);color:var(--muted);font-size:.88rem;font-weight:600;cursor:pointer;transition:.2s;letter-spacing:.3px;}
+.tab-btn:hover{border-color:var(--accent2);color:var(--text)}
+.tab-btn.active{background:linear-gradient(135deg,var(--accent2),var(--accent));border-color:transparent;color:#fff;box-shadow:0 4px 20px rgba(108,99,255,.4);}
+.tab-pane{display:none}.tab-pane.active{display:block}
+
+/* CARDS */
+.card{background:var(--glass);backdrop-filter:blur(12px);border:1px solid var(--border);border-radius:var(--r);padding:18px;margin-bottom:18px;}
+.card-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px;}
+.card-hdr h2{font-size:1rem;font-weight:700;display:flex;align-items:center;gap:8px}
+.badge{padding:3px 10px;border-radius:var(--r-pill);font-size:.72rem;font-weight:600;background:var(--glass);border:1px solid var(--border);letter-spacing:.3px;}
+.badge.ok{background:rgba(34,197,94,.15);border-color:var(--green);color:var(--green)}
+.badge.warn{background:rgba(255,77,109,.15);border-color:var(--accent3);color:var(--accent3)}
+.badge.info{background:rgba(108,99,255,.15);border-color:var(--accent2);color:var(--accent2)}
+.badge.danger{background:rgba(255,77,109,.2);border-color:var(--accent3);color:var(--accent3)}
+
+/* GRID */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.grid-4{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+@media(max-width:900px){.grid-2{grid-template-columns:1fr}}
+@media(max-width:600px){.grid-4{grid-template-columns:1fr}}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:9px 18px;border:none;border-radius:var(--r-sm);font-size:.85rem;font-weight:700;cursor:pointer;transition:.2s;letter-spacing:.2px;white-space:nowrap;}
+.btn:hover{transform:translateY(-1px);filter:brightness(1.1)}
+.btn:active{transform:translateY(0)}
+.btn:disabled{opacity:.45;cursor:not-allowed;transform:none;filter:none}
+.btn-primary{background:linear-gradient(135deg,var(--accent2),#4338ca);color:#fff}
+.btn-accent{background:linear-gradient(135deg,var(--accent),#0ab8a0);color:#000}
+.btn-danger{background:linear-gradient(135deg,var(--accent3),#be123c);color:#fff}
+.btn-warning{background:linear-gradient(135deg,var(--gold),#b45309);color:#000}
+.btn-success{background:linear-gradient(135deg,var(--green),#15803d);color:#fff}
+.btn-food{background:linear-gradient(135deg,var(--orange),#c2410c);color:#fff}
+.btn-stair{background:linear-gradient(135deg,var(--purple),#7c3aed);color:#fff}
+.btn-traffic{background:linear-gradient(135deg,var(--green),#15803d);color:#fff}
+.btn-wif{background:linear-gradient(135deg,var(--sky),#0284c7);color:#fff}
+.btn-finder{background:linear-gradient(135deg,var(--gold),#92400e);color:#fff}
+.btn-rag{background:linear-gradient(135deg,#8338ec,#3a0ca3);color:#fff}
+.btn-read{background:linear-gradient(135deg,var(--accent),#0ab8a0);color:#000}
+.btn-memory{background:linear-gradient(135deg,var(--pink),#be185d);color:#fff}
+.btn-ghost{background:var(--glass);border:1px solid var(--border);color:var(--text)}
+.btn-ghost:hover{border-color:var(--accent2)}
+.btn-agent{background:linear-gradient(135deg,#00e5c8,#6c63ff);color:#000;font-weight:800;}
+.btn-sm{padding:6px 13px;font-size:.78rem}
+.btn-lg{padding:13px 24px;font-size:1rem}
+.btn-full{width:100%}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap}
+.btn-row .btn{flex:1;min-width:90px}
+
+/* INPUTS */
+input[type=text],select,textarea{width:100%;padding:9px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text);font-size:.88rem;transition:.2s;font-family:inherit;}
+input[type=text]:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent2)}
+select option{background:var(--bg2)}
+.input-row{display:flex;gap:8px;margin:8px 0}
+.input-row input,.input-row select{flex:1}
+
+/* CAMERA */
+.cam-wrap{position:relative;border-radius:var(--r);overflow:hidden;background:var(--bg2);border:1px solid var(--border);}
+.cam-wrap video{width:100%;height:100%;object-fit:cover;display:none}
+.cam-placeholder{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--muted);font-size:.85rem;}
+.cam-placeholder i{font-size:2rem;opacity:.4}
+.cam-h160{height:160px}.cam-h200{height:200px}.cam-h220{height:220px}
+.live-ind{display:none;align-items:center;gap:6px;font-size:.72rem;color:var(--accent3);padding:4px 0;}
+.live-ind.show{display:flex}
+.live-dot{width:8px;height:8px;border-radius:50%;background:var(--accent3);animation:pulse 1s infinite}
+
+/* RESULTS */
+.result{display:none;margin-top:10px;padding:12px;border-radius:var(--r-sm);background:rgba(0,229,200,.06);border:1px solid rgba(0,229,200,.2);font-size:.85rem;line-height:1.6;max-height:130px;overflow-y:auto;}
+.result.show{display:block}
+
+/* MAP */
+.map-wrap{height:260px;border-radius:var(--r);overflow:hidden;margin-bottom:12px;border:1px solid var(--border)}
+#map{height:100%;width:100%}
+
+/* SONAR */
+.sonar-row{display:flex;align-items:center;gap:14px;padding:14px;background:var(--bg2);border-radius:var(--r);}
+.sonar-val{font-size:2.4rem;font-weight:900;color:var(--accent);font-variant-numeric:tabular-nums;min-width:80px}
+.sonar-bar-wrap{flex:1;height:14px;background:var(--bg3);border-radius:99px;overflow:hidden}
+.sonar-bar-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:99px;transition:width .3s ease}
+.sensor-chips{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.sensor-chip{background:var(--bg2);padding:10px;border-radius:var(--r-sm);text-align:center}
+.sensor-chip .val{font-size:1.6rem;font-weight:800;color:var(--accent)}
+.sensor-chip .lbl{font-size:.72rem;color:var(--muted);margin-top:2px}
+
+/* MISC */
+.mode-seg{display:flex;gap:6px;margin-bottom:12px}
+.mode-seg button{flex:1;padding:8px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--glass);color:var(--muted);font-size:.8rem;font-weight:600;cursor:pointer;transition:.2s;}
+.mode-seg button.active{background:linear-gradient(135deg,var(--accent2),var(--accent));border-color:transparent;color:#fff}
+.prog{height:4px;background:var(--bg3);border-radius:99px;overflow:hidden;display:none;margin:8px 0}
+.prog-fill{height:100%;background:linear-gradient(90deg,var(--accent2),var(--accent));border-radius:99px;width:0;transition:width .3s}
+.voice-transcript{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r-sm);padding:10px;font-size:.85rem;min-height:48px;max-height:80px;overflow-y:auto;color:var(--muted);margin:10px 0;}
+.voice-response{padding:10px;border-radius:var(--r-sm);background:rgba(0,229,200,.07);border-left:3px solid var(--accent);font-size:.85rem;display:none;}
+.listen-ind{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--muted);margin-right:6px;transition:background .2s;}
+.listen-ind.active{background:var(--green);animation:pulse 1.5s infinite}
+.sos-card{border-color:rgba(255,77,109,.4);background:rgba(255,77,109,.06)}
+.sos-btn{width:100%;padding:18px;border:none;border-radius:var(--r);background:linear-gradient(135deg,#ff4d6d,#be123c);color:#fff;font-size:1.3rem;font-weight:900;cursor:pointer;letter-spacing:1px;box-shadow:0 0 30px rgba(255,77,109,.4);transition:.2s;}
+.sos-btn:hover{transform:scale(1.01);box-shadow:0 0 50px rgba(255,77,109,.6)}
+.sos-chips{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}
+.sos-chip{background:var(--bg2);border-radius:var(--r-sm);padding:8px;text-align:center;font-size:.8rem}
+.upload-area{border:2px dashed var(--border);border-radius:var(--r);padding:20px;text-align:center;cursor:pointer;transition:.2s;}
+.upload-area:hover{border-color:var(--accent2);background:rgba(108,99,255,.05)}
+.upload-area i{font-size:2rem;margin-bottom:6px;display:block}
+.upload-area h3{font-size:.95rem;margin-bottom:4px}
+.upload-area p{font-size:.78rem;color:var(--muted)}
+.cmd-list{background:var(--bg1);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-top:16px;}
+.cmd-list h4{color:var(--accent);font-size:.9rem;margin-bottom:10px;display:flex;align-items:center;gap:7px}
+.cmd-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:4px}
+.cmd-item{font-size:.78rem;padding:4px 0;color:var(--muted)}
+.cmd-item strong{color:var(--text)}
+.loader{width:22px;height:22px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 1s linear infinite;margin:8px auto;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);padding:10px 22px;border-radius:var(--r-pill);font-size:.88rem;font-weight:600;z-index:9999;opacity:0;transition:.3s;pointer-events:none;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.status-dot{width:10px;height:10px;border-radius:50%;background:var(--muted);display:inline-block}
+.status-dot.scanning{background:var(--gold);animation:pulse 1s infinite}
+.status-dot.captured{background:var(--green)}
+.mode-indicator{position:fixed;bottom:16px;right:16px;padding:7px 16px;border-radius:var(--r-pill);font-size:.78rem;font-weight:600;background:rgba(0,229,200,.15);border:1px solid var(--accent);color:var(--accent);z-index:100;}
+.desc-box{background:var(--bg2);border-left:3px solid var(--accent2);border-radius:var(--r-sm);padding:10px 12px;font-size:.84rem;line-height:1.6;margin-top:8px;}
+.feat-card{background:var(--bg1);border:1px solid var(--border);border-radius:var(--r);padding:14px;}
+.feat-card h3{font-size:.9rem;font-weight:700;display:flex;align-items:center;gap:7px;margin-bottom:10px}
+.section-title{font-size:.7rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin:20px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--border);}
+.obj-list{list-style:none;max-height:90px;overflow-y:auto;margin-bottom:8px}
+.obj-item{padding:5px 10px;margin:3px 0;background:var(--bg2);border-radius:var(--r-sm);border-left:3px solid var(--accent);font-size:.82rem;}
+.indoor-status{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--bg2);border-radius:var(--r-sm);font-size:.85rem;margin-bottom:10px;}
+.memory-card{background:rgba(244,114,182,.06);border:1px solid rgba(244,114,182,.3);border-radius:var(--r);padding:18px;margin-bottom:18px;}
+.memory-item{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--bg2);border-radius:var(--r-sm);margin-bottom:8px;border-left:3px solid var(--pink);}
+.memory-item-info{flex:1}
+.memory-item-name{font-weight:700;font-size:.9rem}
+.memory-item-loc{font-size:.78rem;color:var(--muted);margin-top:2px}
+.memory-item-meta{font-size:.7rem;color:var(--accent2);margin-top:2px}
+.memory-empty{text-align:center;color:var(--muted);padding:24px;font-size:.88rem}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+
+/* ACCESSIBILITY */
+.acc-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:70vh;gap:24px;padding:20px;text-align:center;}
+.wake-orb{width:240px;height:240px;border-radius:50%;background:conic-gradient(from 0deg,var(--accent),var(--accent2),var(--accent));display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 0 60px rgba(0,229,200,.3);transition:.3s;animation:orbPulse 3s ease-in-out infinite;position:relative;}
+.wake-orb::before{content:'';position:absolute;inset:6px;border-radius:50%;background:var(--bg0);}
+.wake-orb-inner{position:relative;z-index:1;color:#fff;font-size:1rem;font-weight:800;line-height:1.5;}
+.wake-orb.listening{animation:orbListening .8s ease-in-out infinite;box-shadow:0 0 80px rgba(255,77,109,.5)}
+@keyframes orbPulse{0%,100%{transform:scale(1);box-shadow:0 0 40px rgba(0,229,200,.2)}50%{transform:scale(1.04);box-shadow:0 0 80px rgba(0,229,200,.5)}}
+@keyframes orbListening{0%,100%{transform:scale(1)}50%{transform:scale(1.03)}}
+.wake-status{font-size:1.1rem;background:var(--glass);border:1px solid var(--border);padding:12px 28px;border-radius:var(--r-pill);max-width:500px;width:100%;}
+.wake-cmds{font-size:.85rem;color:var(--muted);line-height:2;max-width:520px;background:var(--glass);border:1px solid var(--border);padding:16px 24px;border-radius:var(--r);text-align:left;width:100%;}
+.acc-response{max-width:580px;width:100%;background:var(--glass);border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:var(--r);padding:16px;font-size:1rem;display:none;}
+
+/* ASSISTANT PANEL */
+.assistant-panel{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:2000;flex-direction:column;align-items:center;justify-content:center;gap:24px;padding:24px;}
+.assistant-panel.show{display:flex}
+.assistant-orb{width:180px;height:180px;border-radius:50%;background:conic-gradient(from 0deg,var(--pink),var(--accent2),var(--pink));display:flex;align-items:center;justify-content:center;box-shadow:0 0 60px rgba(244,114,182,.5);animation:orbListening .8s ease-in-out infinite;position:relative;}
+.assistant-orb::before{content:'';position:absolute;inset:6px;border-radius:50%;background:rgba(6,8,15,.9);}
+.assistant-orb-inner{position:relative;z-index:1;font-size:.9rem;font-weight:800;text-align:center;line-height:1.6}
+.assistant-status{font-size:1.2rem;font-weight:700;text-align:center;background:var(--glass);border:1px solid var(--border);padding:16px 32px;border-radius:var(--r-pill);max-width:500px;width:100%;}
+.assistant-response{font-size:1rem;text-align:center;background:var(--glass);border:1px solid rgba(244,114,182,.3);padding:16px;border-radius:var(--r);max-width:500px;width:100%;line-height:1.6;display:none;}
+.assistant-response.show{display:block}
+
+/* ── AGENT DASHBOARD ───────────────────────────────────────── */
+.agent-overlay{display:none;position:fixed;bottom:0;left:0;right:0;height:4px;background:linear-gradient(90deg,var(--accent2),var(--accent),var(--purple),var(--accent2));background-size:200% 100%;animation:scanLine 1.5s linear infinite;z-index:9990;}
+.agent-overlay.active{display:block;}
+@keyframes scanLine{0%{background-position:0% 0%}100%{background-position:200% 0%}}
+.agent-dashboard{position:fixed;bottom:24px;right:24px;width:440px;max-width:calc(100vw - 32px);background:var(--agent-bg);border:1px solid var(--agent-border);border-radius:20px;box-shadow:0 0 0 1px rgba(0,229,200,.05),0 24px 64px rgba(0,0,0,.8),0 0 40px rgba(0,229,200,.05);z-index:9980;transform:translateY(120%) scale(0.95);opacity:0;transition:transform .4s cubic-bezier(.34,1.56,.64,1),opacity .3s ease;overflow:hidden;backdrop-filter:blur(24px);font-family:'JetBrains Mono',monospace;}
+.agent-dashboard.visible{transform:translateY(0) scale(1);opacity:1;}
+.agent-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;border-bottom:1px solid var(--agent-border);background:linear-gradient(135deg,rgba(108,99,255,.08),rgba(0,229,200,.04));}
+.agent-header-left{display:flex;align-items:center;gap:10px;}
+.agent-brain-icon{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,var(--accent2),var(--accent));display:flex;align-items:center;justify-content:center;font-size:.9rem;box-shadow:0 0 12px rgba(108,99,255,.4);animation:brainPulse 2s ease-in-out infinite;}
+@keyframes brainPulse{0%,100%{box-shadow:0 0 8px rgba(108,99,255,.3)}50%{box-shadow:0 0 20px rgba(108,99,255,.7)}}
+.agent-header-title{font-size:.75rem;font-weight:700;background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:1.5px;text-transform:uppercase;}
+.agent-header-subtitle{font-size:.62rem;color:var(--muted);margin-top:1px;letter-spacing:.5px;}
+.agent-status-pill{font-size:.6rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:3px 8px;border-radius:999px;background:rgba(0,229,200,.1);border:1px solid rgba(0,229,200,.3);color:var(--accent);display:flex;align-items:center;gap:4px;}
+.agent-status-dot{width:5px;height:5px;border-radius:50%;background:var(--accent);animation:pulse 1.2s infinite;}
+.agent-close-btn{width:26px;height:26px;border-radius:6px;border:1px solid rgba(255,77,109,.2);cursor:pointer;background:rgba(255,77,109,.1);color:var(--accent3);font-size:.75rem;display:flex;align-items:center;justify-content:center;transition:.15s;}
+.agent-close-btn:hover{background:rgba(255,77,109,.2);}
+.agent-goal-bar{padding:10px 16px;border-bottom:1px solid var(--agent-border);background:rgba(255,255,255,.02);}
+.agent-goal-label{font-size:.58rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px;}
+.agent-goal-text{font-size:.8rem;color:var(--text);font-weight:600;line-height:1.4;word-break:break-word;}
+.agent-progress-track{padding:10px 16px 8px;border-bottom:1px solid var(--agent-border);}
+.agent-progress-meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;font-size:.62rem;color:var(--muted);}
+.agent-progress-bar-outer{height:3px;background:rgba(255,255,255,.06);border-radius:99px;overflow:hidden;}
+.agent-progress-bar-inner{height:100%;background:linear-gradient(90deg,var(--accent2),var(--accent));border-radius:99px;transition:width .6s ease;box-shadow:0 0 8px rgba(0,229,200,.5);}
+.agent-steps-container{max-height:220px;overflow-y:auto;padding:10px 12px;}
+.agent-steps-container::-webkit-scrollbar{width:3px}
+.agent-steps-container::-webkit-scrollbar-thumb{background:var(--accent2);border-radius:2px;}
+.agent-step{display:flex;gap:10px;padding:9px 10px;border-radius:10px;margin-bottom:5px;border:1px solid rgba(45,53,80,.8);background:var(--bg3);transition:all .3s ease;position:relative;overflow:hidden;}
+.agent-step::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;background:rgba(45,53,80,.8);transition:background .3s;}
+.agent-step.step-active{border-color:var(--gold);background:rgba(240,180,41,.08);box-shadow:0 0 12px rgba(240,180,41,.08);}
+.agent-step.step-active::before{background:var(--gold);}
+.agent-step.step-done{border-color:rgba(34,197,94,.4);background:rgba(34,197,94,.06);opacity:.8;}
+.agent-step.step-done::before{background:var(--green);}
+.agent-step.step-active::after{content:'';position:absolute;top:0;left:-100%;bottom:0;width:50%;background:linear-gradient(90deg,transparent,rgba(240,180,41,.06),transparent);animation:stepShimmer 2s ease infinite;}
+@keyframes stepShimmer{0%{left:-100%}100%{left:200%}}
+.agent-step-icon{width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:.75rem;flex-shrink:0;margin-top:1px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);transition:all .3s;}
+.step-active .agent-step-icon{background:rgba(240,180,41,.15);border-color:rgba(240,180,41,.4);color:var(--gold);animation:iconBounce .6s ease infinite alternate;}
+@keyframes iconBounce{0%{transform:scale(1)}100%{transform:scale(1.1)}}
+.step-done .agent-step-icon{background:rgba(34,197,94,.15);border-color:rgba(34,197,94,.4);color:var(--green);}
+.agent-step-body{flex:1;min-width:0;}
+.agent-step-num{font-size:.55rem;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;margin-bottom:2px;}
+.agent-step-purpose{font-size:.75rem;font-weight:600;color:var(--text);line-height:1.3;word-break:break-word;transition:color .3s;}
+.step-active .agent-step-purpose{color:var(--gold);}
+.step-done .agent-step-purpose{color:rgba(232,236,243,.5);}
+.agent-step-tool-chip{background:rgba(108,99,255,.12);border:1px solid rgba(108,99,255,.2);color:var(--accent2);padding:1px 6px;border-radius:4px;font-size:.58rem;font-weight:600;letter-spacing:.3px;display:inline-block;margin-top:3px;}
+.step-active .agent-step-tool-chip{background:rgba(240,180,41,.1);border-color:rgba(240,180,41,.3);color:var(--gold);}
+.step-done .agent-step-tool-chip{background:rgba(34,197,94,.08);border-color:rgba(34,197,94,.2);color:var(--green);}
+.agent-step-status-badge{font-size:.55rem;font-weight:700;letter-spacing:.5px;text-transform:uppercase;padding:2px 6px;border-radius:4px;flex-shrink:0;align-self:flex-start;margin-top:2px;}
+.badge-pending{background:rgba(107,122,153,.1);color:var(--muted);}
+.badge-running{background:rgba(240,180,41,.15);color:var(--gold);animation:badgePulse 1s ease infinite;}
+@keyframes badgePulse{0%,100%{opacity:1}50%{opacity:.6}}
+.badge-done{background:rgba(34,197,94,.12);color:var(--green);}
+.agent-current-strip{padding:10px 16px;border-top:1px solid var(--agent-border);background:rgba(108,99,255,.04);display:none;}
+.agent-current-strip.show{display:block;}
+.agent-current-label{font-size:.58rem;color:var(--accent2);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;}
+.agent-current-text{font-size:.78rem;color:var(--text);line-height:1.4;display:flex;align-items:center;gap:6px;}
+.agent-thinking-dots{display:inline-flex;gap:3px;align-items:center;}
+.agent-thinking-dots span{width:4px;height:4px;border-radius:50%;background:var(--accent);animation:thinkDot 1.2s ease infinite;}
+.agent-thinking-dots span:nth-child(2){animation-delay:.2s;}
+.agent-thinking-dots span:nth-child(3){animation-delay:.4s;}
+@keyframes thinkDot{0%,80%,100%{transform:scale(1);opacity:.4}40%{transform:scale(1.4);opacity:1}}
+.agent-user-wait{padding:10px 16px;border-top:1px solid var(--agent-border);background:rgba(240,180,41,.04);display:none;}
+.agent-user-wait.show{display:block;}
+.agent-user-wait-label{font-size:.58rem;color:var(--gold);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;}
+.agent-user-wait-question{font-size:.8rem;color:var(--text);line-height:1.5;margin-bottom:6px;font-weight:600;}
+.agent-user-wait-hint{font-size:.65rem;color:var(--muted);margin-bottom:6px;}
+.agent-wait-cmds{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;}
+.agent-wait-cmd{font-size:.62rem;font-weight:700;padding:3px 10px;border-radius:6px;background:rgba(240,180,41,.1);border:1px solid rgba(240,180,41,.3);color:var(--gold);cursor:pointer;transition:.15s;font-family:'JetBrains Mono',monospace;}
+.agent-wait-cmd:hover{background:rgba(240,180,41,.2);}
+.agent-mic-indicator{font-size:.65rem;color:var(--accent);margin-top:6px;display:none;align-items:center;gap:5px;}
+.agent-mic-indicator.show{display:flex;}
+.agent-mic-dot{width:7px;height:7px;border-radius:50%;background:var(--accent3);animation:pulse 0.8s infinite;}
+.agent-footer{padding:10px 16px 14px;border-top:1px solid var(--agent-border);display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.agent-cancel-btn{flex:1;padding:7px 14px;border:none;border-radius:8px;cursor:pointer;background:rgba(255,77,109,.08);border:1px solid rgba(255,77,109,.2);color:var(--accent3);font-size:.72rem;font-weight:700;letter-spacing:.5px;transition:.15s;font-family:'JetBrains Mono',monospace;}
+.agent-cancel-btn:hover{background:rgba(255,77,109,.18);}
+.agent-steps-counter{font-size:.65rem;color:var(--muted);text-align:right;font-family:'JetBrains Mono',monospace;}
+.agent-complete-flash{position:absolute;inset:0;background:radial-gradient(circle at center,rgba(34,197,94,.15),transparent 70%);pointer-events:none;opacity:0;transition:opacity .5s;border-radius:20px;}
+.agent-complete-flash.show{opacity:1;}
+.agent-trigger-card{background:linear-gradient(135deg,rgba(0,229,200,.06),rgba(108,99,255,.06));border:1px solid rgba(0,229,200,.2);border-radius:var(--r);padding:16px 18px;margin-bottom:18px;display:flex;align-items:center;gap:14px;}
+.agent-trigger-icon{width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,var(--accent2),var(--accent));display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0;box-shadow:0 0 16px rgba(108,99,255,.3);}
+.agent-trigger-body{flex:1}
+.agent-trigger-title{font-size:.92rem;font-weight:700;margin-bottom:4px;background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.agent-trigger-desc{font-size:.78rem;color:var(--muted);margin-bottom:8px;}
+.agent-trigger-input-row{display:flex;gap:8px;}
+.agent-log-line{padding:2px 0;font-size:.72rem;line-height:1.9;}
+
+/* Agent-mode-active: disable manual buttons */
+body.agent-mode-active .btn:not(.agent-cancel-btn):not(.agent-close-btn):not(.agent-wait-cmd){opacity:.5;pointer-events:none;}
+body.agent-mode-active .feat-card button,
+body.agent-mode-active .memory-card button,
+body.agent-mode-active .mode-seg button{opacity:.5;pointer-events:none;}
+body.agent-mode-active .agent-cancel-btn,
+body.agent-mode-active .agent-close-btn,
+body.agent-mode-active .agent-wait-cmd{opacity:1!important;pointer-events:auto!important;}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- HEADER -->
+<div class="hdr">
+  <div class="hdr-brand">
+    <div class="hdr-logo"><i class="fas fa-eye"></i></div>
+    <div>
+      <div class="hdr-title">VisionAssist AI</div>
+      <div class="hdr-sub">v16 · All 18 Backend + 13 Frontend Fixes · Multi-Step Agent</div>
+    </div>
+  </div>
+  <div class="hdr-status">
+    <div class="hdr-dot"></div>
+    <span id="activeModeLbl">System Ready</span>
+  </div>
+</div>
+
+<div class="mode-banner" id="modeBanner">
+  <i class="fas fa-exclamation-circle"></i>
+  <span id="modeBannerText">Mode conflict</span>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab(1)" id="tab1Btn">📱 Standard</button>
+  <button class="tab-btn" onclick="switchTab(2)" id="tab2Btn">♿ Accessibility</button>
+  <button class="tab-btn" onclick="switchTab(3)" id="tab3Btn">🧠 Memory</button>
+  <button class="tab-btn" onclick="switchTab(4)" id="tab4Btn">🤖 Agent</button>
+</div>
+
+<!-- ═══════════ TAB 1 ═══════════ -->
+<div class="tab-pane active" id="tab1">
+  <div class="btn-row" style="margin-bottom:18px">
+    <button class="btn btn-primary" id="startCameraBtn"><i class="fas fa-camera"></i> Start Camera</button>
+    <button class="btn btn-danger" id="stopCameraBtn"><i class="fas fa-stop"></i> Stop Camera</button>
+    <button class="btn btn-ghost" id="globalStopBtn"><i class="fas fa-power-off"></i> Stop All</button>
+    <button class="btn btn-ghost" id="stopVoiceBtn2"><i class="fas fa-volume-mute"></i> Stop Voice</button>
+    <button class="btn btn-ghost" id="resumeVoiceBtn2"><i class="fas fa-volume-up"></i> Resume Voice</button>
+  </div>
+
+  <div class="grid-2">
+    <!-- NAV -->
+    <div class="card">
+      <div class="card-hdr">
+        <h2><i class="fas fa-map-marked-alt" style="color:var(--accent)"></i> Navigation</h2>
+        <span class="badge" id="navModeBadge">🌍 Outdoor</span>
+      </div>
+      <div class="mode-seg">
+        <button class="active" id="outdoorModeBtn" onclick="setNavMode('outdoor')"><i class="fas fa-map"></i> Outdoor</button>
+        <button id="indoorModeBtn" onclick="setNavMode('indoor')"><i class="fas fa-building"></i> Indoor</button>
+      </div>
+      <div class="map-wrap"><div id="map"></div></div>
+      <div id="outdoorCtrl">
+        <div class="input-row">
+          <input type="text" id="endLocation" placeholder="Enter destination…">
+          <button class="btn btn-accent btn-sm" id="findRouteBtn"><i class="fas fa-route"></i> Go</button>
+        </div>
+      </div>
+      <div id="indoorCtrl" style="display:none">
+        <div class="indoor-status"><span class="status-dot" id="indoorDot"></span><span id="indoorStatusTxt">No indoor map loaded</span></div>
+        <div class="upload-area" id="videoUploadArea" style="border-color:var(--accent);margin-bottom:10px">
+          <i class="fas fa-video" style="color:var(--accent)"></i>
+          <h3>Upload Home Walkthrough Video</h3>
+          <p>Record a walk-through to create indoor map</p>
+          <input type="file" id="videoFileInput" accept="video/*" style="display:none">
+          <div class="prog" id="uploadProg"><div class="prog-fill" id="uploadProgFill"></div></div>
+        </div>
+        <div id="indoorNavCtrl" style="display:none">
+          <div style="background:rgba(0,229,200,.07);padding:12px;border-radius:var(--r-sm);margin-bottom:10px">
+            <div style="font-size:.8rem;color:var(--muted);margin-bottom:4px">Current Room</div>
+            <div id="currentRoom" style="font-size:1.1rem;font-weight:700;color:var(--accent)">Not detected</div>
+            <button class="btn btn-ghost btn-sm" id="detectLocBtn" style="margin-top:8px"><i class="fas fa-crosshairs"></i> Detect Room</button>
+          </div>
+          <select id="destRoom" style="margin-bottom:8px"><option value="">Select destination…</option></select>
+          <button class="btn btn-accent btn-full" id="indoorNavBtn"><i class="fas fa-location-arrow"></i> Navigate</button>
+          <div id="indoorInstr" style="display:none;margin-top:10px">
+            <div class="desc-box">
+              <h4 style="font-size:.82rem;margin-bottom:6px"><i class="fas fa-directions"></i> Instructions</h4>
+              <div id="instrList"></div>
+              <div id="instrTotal" style="margin-top:8px;font-weight:700;color:var(--accent);font-size:.82rem"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- OBJECT DETECTION -->
+    <div class="card">
+      <div class="card-hdr">
+        <h2><i class="fas fa-robot" style="color:var(--accent2)"></i> Object Detection</h2>
+        <span class="badge" id="camBadge">📷 Off</span>
+      </div>
+      <div class="cam-wrap cam-h200" id="mainCamWrap">
+        <video id="cameraFeed" autoplay playsinline></video>
+        <canvas id="cameraCanvas" style="display:none"></canvas>
+        <div class="cam-placeholder" id="camPlaceholder"><i class="fas fa-camera"></i><span>Camera off</span></div>
+      </div>
+      <div class="btn-row" style="margin:10px 0">
+        <button class="btn btn-primary btn-sm" onclick="setDetMode('normal')"><i class="fas fa-cube"></i> Object</button>
+        <button class="btn btn-stair btn-sm" onclick="setDetMode('face')"><i class="fas fa-user"></i> Face</button>
+        <button class="btn btn-success btn-sm" onclick="setDetMode('money')"><i class="fas fa-money-bill-wave"></i> Money</button>
+        <button class="btn btn-warning btn-sm" onclick="startCaptureFlow()"><i class="fas fa-camera-retro"></i> Capture</button>
+      </div>
+      <ul class="obj-list" id="objectList"><li class="obj-item">No objects detected</li></ul>
+      <div class="desc-box" id="descBox">No objects detected</div>
+    </div>
+  </div>
+
+  <!-- SONAR -->
+  <div class="card">
+    <div class="card-hdr">
+      <h2><i class="fas fa-broadcast-tower" style="color:var(--accent)"></i> Obstacle Detection (Arduino)</h2>
+      <span class="badge" id="sonarBadge">Initializing…</span>
+    </div>
+    <div class="sonar-row">
+      <div class="sonar-val"><span id="sonarDist">0</span><span style="font-size:1rem"> cm</span></div>
+      <div class="sonar-bar-wrap"><div class="sonar-bar-fill" id="sonarBar" style="width:0%"></div></div>
+    </div>
+    <div class="sensor-chips">
+      <div class="sensor-chip"><div class="val" id="distVal">0</div><div class="lbl">Distance (cm)</div></div>
+      <div class="sensor-chip"><div class="val" id="stepsVal">0</div><div class="lbl">Steps</div></div>
+    </div>
+  </div>
+
+  <div class="section-title">🤖 AI Detection Features</div>
+  <div class="grid-4">
+    <!-- FOOD -->
+    <div class="feat-card">
+      <h3><i class="fas fa-utensils" style="color:var(--orange)"></i> Food Detector</h3>
+      <div class="cam-wrap cam-h160">
+        <video id="foodVideo" autoplay muted playsinline></video>
+        <div class="cam-placeholder" id="foodPlaceholder"><i class="fas fa-utensils"></i><span>Click Start</span></div>
+      </div>
+      <div class="mode-seg" style="margin-top:8px">
+        <button class="active" id="foodModeNormal" onclick="setMyEyeMode('food','normal')">📸 Normal</button>
+        <button id="foodModeLive" onclick="setMyEyeMode('food','live')">🔴 Live</button>
+      </div>
+      <div class="live-ind" id="foodLiveInd"><div class="live-dot"></div><span>Live active</span></div>
+      <div class="btn-row" style="margin-top:6px">
+        <button class="btn btn-food btn-sm" id="foodCamBtn"><i class="fas fa-camera"></i> Start</button>
+        <button class="btn btn-food btn-sm" id="foodAnalyzeBtn" style="display:none" disabled><i class="fas fa-play"></i> Analyze</button>
+        <button class="btn btn-food btn-sm" id="foodLiveBtn" style="display:none" disabled><i class="fas fa-circle"></i> Live</button>
+        <button class="btn btn-danger btn-sm" id="foodStopBtn" style="display:none"><i class="fas fa-stop"></i></button>
+      </div>
+      <div class="result" id="foodResult"></div>
+    </div>
+    <!-- STAIR -->
+    <div class="feat-card">
+      <h3><i class="fas fa-stairs" style="color:var(--purple)"></i> Stair Detector</h3>
+      <div class="cam-wrap cam-h160">
+        <video id="stairVideo" autoplay muted playsinline></video>
+        <div class="cam-placeholder" id="stairPlaceholder"><i class="fas fa-stairs"></i><span>Click Start</span></div>
+      </div>
+      <div class="mode-seg" style="margin-top:8px">
+        <button class="active" id="stairModeNormal" onclick="setMyEyeMode('stair','normal')">📸 Normal</button>
+        <button id="stairModeLive" onclick="setMyEyeMode('stair','live')">🔴 Live</button>
+      </div>
+      <div class="live-ind" id="stairLiveInd"><div class="live-dot"></div><span>Live active</span></div>
+      <div class="btn-row" style="margin-top:6px">
+        <button class="btn btn-stair btn-sm" id="stairCamBtn"><i class="fas fa-camera"></i> Start</button>
+        <button class="btn btn-stair btn-sm" id="stairAnalyzeBtn" style="display:none" disabled><i class="fas fa-play"></i> Scan</button>
+        <button class="btn btn-stair btn-sm" id="stairLiveBtn" style="display:none" disabled><i class="fas fa-circle"></i> Live</button>
+        <button class="btn btn-danger btn-sm" id="stairStopBtn" style="display:none"><i class="fas fa-stop"></i></button>
+      </div>
+      <div class="result" id="stairResult"></div>
+    </div>
+    <!-- TRAFFIC -->
+    <div class="feat-card">
+      <h3><i class="fas fa-traffic-light" style="color:var(--green)"></i> Traffic Light</h3>
+      <div class="cam-wrap cam-h160">
+        <video id="trafficVideo" autoplay muted playsinline></video>
+        <div class="cam-placeholder" id="trafficPlaceholder"><i class="fas fa-traffic-light"></i><span>Click Start</span></div>
+      </div>
+      <div class="mode-seg" style="margin-top:8px">
+        <button class="active" id="trafficModeNormal" onclick="setMyEyeMode('traffic','normal')">📸 Normal</button>
+        <button id="trafficModeLive" onclick="setMyEyeMode('traffic','live')">🔴 Live</button>
+      </div>
+      <div class="live-ind" id="trafficLiveInd"><div class="live-dot"></div><span>Live active</span></div>
+      <div class="btn-row" style="margin-top:6px">
+        <button class="btn btn-traffic btn-sm" id="trafficCamBtn"><i class="fas fa-camera"></i> Start</button>
+        <button class="btn btn-traffic btn-sm" id="trafficAnalyzeBtn" style="display:none" disabled><i class="fas fa-play"></i> Check</button>
+        <button class="btn btn-traffic btn-sm" id="trafficLiveBtn" style="display:none" disabled><i class="fas fa-circle"></i> Live</button>
+        <button class="btn btn-danger btn-sm" id="trafficStopBtn" style="display:none"><i class="fas fa-stop"></i></button>
+      </div>
+      <div class="result" id="trafficResult"></div>
+    </div>
+    <!-- WIF -->
+    <div class="feat-card">
+      <h3><i class="fas fa-question-circle" style="color:var(--sky)"></i> What's In Front</h3>
+      <div class="cam-wrap cam-h160">
+        <video id="wifVideo" autoplay muted playsinline></video>
+        <div class="cam-placeholder" id="wifPlaceholder"><i class="fas fa-question-circle"></i><span>Click Start</span></div>
+      </div>
+      <div class="mode-seg" style="margin-top:8px">
+        <button class="active" id="wifModeNormal" onclick="setMyEyeMode('wif','normal')">📸 Normal</button>
+        <button id="wifModeLive" onclick="setMyEyeMode('wif','live')">🔴 Live</button>
+      </div>
+      <div class="live-ind" id="wifLiveInd"><div class="live-dot"></div><span>Live active</span></div>
+      <div class="input-row" style="margin-top:6px">
+        <input type="text" id="wifQuestion" placeholder="Ask e.g. 'Is there a chair?'">
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-wif btn-sm" id="wifCamBtn"><i class="fas fa-camera"></i> Start</button>
+        <button class="btn btn-wif btn-sm" id="wifAnalyzeBtn" style="display:none" disabled><i class="fas fa-play"></i> Ask</button>
+        <button class="btn btn-wif btn-sm" id="wifLiveBtn" style="display:none" disabled><i class="fas fa-circle"></i> Live</button>
+        <button class="btn btn-danger btn-sm" id="wifStopBtn" style="display:none"><i class="fas fa-stop"></i></button>
+      </div>
+      <div class="result" id="wifResult"></div>
+    </div>
+  </div>
+
+  <!-- OBJECT FINDER -->
+  <div class="section-title">🔍 Object Finder (360° Scan)</div>
+  <div class="card" style="border-color:var(--gold)">
+    <div class="card-hdr">
+      <h2><i class="fas fa-search" style="color:var(--gold)"></i> Object Finder</h2>
+      <span class="badge" id="finderBadge">🔍 Idle</span>
+    </div>
+    <p style="font-size:.8rem;color:var(--muted);margin-bottom:10px">Say "My Eye find my keys" — slowly turn 360°. AI checks memory first, then scans.</p>
+    <div class="cam-wrap cam-h200" style="margin-bottom:10px">
+      <video id="finderVideo" autoplay muted playsinline></video>
+      <div class="cam-placeholder" id="finderPlaceholder"><i class="fas fa-search"></i><span>Click Start Camera</span></div>
+    </div>
+    <div class="input-row">
+      <input type="text" id="findObjectQuery" placeholder="What are you looking for?">
+      <button class="btn btn-finder btn-sm" id="finderCamBtn"><i class="fas fa-camera"></i> Start Cam</button>
+    </div>
+    <div class="mode-seg">
+      <button class="active" id="finderModeNormal" onclick="setMyEyeMode('finder','normal')">📸 Normal (30s scan)</button>
+      <button id="finderModeLive" onclick="setMyEyeMode('finder','live')">🔴 Live Mode</button>
+    </div>
+    <div class="live-ind" id="finderLiveInd"><div class="live-dot"></div><span>Live scanning…</span></div>
+    <div class="btn-row">
+      <button class="btn btn-finder" id="finderStartScanBtn" style="display:none"><i class="fas fa-play"></i> Start 30s Scan</button>
+      <button class="btn btn-finder btn-sm" id="finderLiveBtn" style="display:none" disabled><i class="fas fa-circle"></i> Go Live</button>
+      <button class="btn btn-danger" id="finderStopBtn" style="display:none"><i class="fas fa-stop"></i> Stop</button>
+    </div>
+    <div class="prog" id="finderProg"><div class="prog-fill" id="finderProgFill"></div></div>
+    <div class="result" id="finderResult"></div>
+  </div>
+
+  <!-- RAG -->
+  <div class="section-title">📄 RAG Document Scanner</div>
+  <div class="card" style="border-color:#8338ec">
+    <div class="card-hdr">
+      <h2><i class="fas fa-file-image" style="color:#8338ec"></i> RAG Document Scanner <span class="badge info" style="background:rgba(131,56,236,.2);border-color:#8338ec;color:#8338ec">AUTO</span></h2>
+      <span class="badge" id="ragBadge">🟤 Idle</span>
+    </div>
+    <div class="indoor-status"><span class="status-dot" id="ragDot"></span><span id="ragStatusTxt">Click Start Auto-Scanner</span></div>
+    <div class="cam-wrap cam-h200" style="margin-bottom:10px">
+      <video id="ragCamera" autoplay playsinline></video>
+      <div class="cam-placeholder" id="ragPlaceholder"><i class="fas fa-file-image"></i><span>Camera for Document Scanner</span></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-rag" id="startRagBtn"><i class="fas fa-play"></i> Start Auto-Scanner</button>
+      <button class="btn btn-danger" id="stopRagBtn" style="display:none"><i class="fas fa-stop"></i> Stop</button>
+    </div>
+    <div class="result" id="ragResult"></div>
+  </div>
+
+  <!-- PAGE READER -->
+  <div class="section-title">📖 Page Reader</div>
+  <div class="card" style="border-color:var(--accent)">
+    <div class="card-hdr">
+      <h2><i class="fas fa-book-open" style="color:var(--accent)"></i> Page Reader</h2>
+      <span class="badge" id="readBadge">🔵 Idle</span>
+    </div>
+    <div class="indoor-status"><span class="status-dot" id="readDot"></span><span id="readStatusTxt">Click Start Auto-Reader</span></div>
+    <div class="cam-wrap cam-h200" style="margin-bottom:10px">
+      <video id="readCamera" autoplay playsinline></video>
+      <div class="cam-placeholder" id="readPlaceholder"><i class="fas fa-book-open"></i><span>Camera for Page Reader</span></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-read" id="startReadBtn"><i class="fas fa-play"></i> Start Auto-Reader</button>
+      <button class="btn btn-danger" id="stopReadBtn" style="display:none"><i class="fas fa-stop"></i> Stop</button>
+    </div>
+    <div class="result" id="readResult"></div>
+  </div>
+
+  <!-- RAG FILE UPLOAD -->
+  <div class="upload-area" id="ragUploadArea" style="border-color:var(--accent2);margin-bottom:18px">
+    <i class="fas fa-database" style="color:var(--accent2)"></i>
+    <h3>Upload Document to Knowledge Base</h3>
+    <p>PDF, DOCX, TXT — adds to AI knowledge</p>
+    <input type="file" id="ragFileInput" accept=".pdf,.docx,.txt,.doc" style="display:none">
+  </div>
+  <div id="ragUploadMsg" style="display:none;margin-bottom:14px"><div class="desc-box" id="ragUploadMsgTxt"></div></div>
+
+  <!-- VOICE -->
+  <div class="section-title">🎙 Voice Assistant</div>
+  <div class="card">
+    <div class="card-hdr">
+      <h2><i class="fas fa-microphone" style="color:var(--accent)"></i> Voice Assistant</h2>
+      <span><span class="listen-ind" id="listenInd"></span><span id="voiceStatusTxt">Idle</span></span>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-success" id="startVoiceBtn"><i class="fas fa-play"></i> Start Listening</button>
+      <button class="btn btn-danger" id="stopVoiceBtn"><i class="fas fa-stop"></i> Stop</button>
+    </div>
+    <div class="voice-transcript" id="voiceTranscript">Click "Start Listening" to speak</div>
+    <div class="voice-response" id="voiceResponse"></div>
+  </div>
+
+  <!-- SOS -->
+  <div class="section-title">🆘 Emergency</div>
+  <div class="card sos-card">
+    <div class="card-hdr">
+      <h2><i class="fas fa-exclamation-triangle" style="color:var(--accent3)"></i> Emergency SOS</h2>
+      <span class="badge" id="sosBadge">🟢 Ready</span>
+    </div>
+    <button class="sos-btn" id="sosMainBtn"><i class="fas fa-exclamation-circle"></i> SOS EMERGENCY</button>
+    <div class="sos-chips">
+      <div class="sos-chip"><i class="fas fa-map-marker-alt"></i><div id="sosLocation" style="margin-top:4px;font-size:.78rem">Waiting GPS…</div></div>
+      <div class="sos-chip"><i class="fas fa-clock"></i><div id="currentTime" style="margin-top:4px;font-size:.78rem">--:--:--</div></div>
+    </div>
+    <button class="btn btn-ghost" id="cancelSOSBtn" style="margin-top:8px;width:100%" disabled>Cancel SOS</button>
+  </div>
+
+  <!-- COMMANDS -->
+  <div class="cmd-list">
+    <h4><i class="fas fa-microphone-alt"></i> All Voice Commands — say "My Eye" + command</h4>
+    <div class="cmd-grid">
+      <div class="cmd-item">🍽️ <strong>"detect food"</strong> / <strong>"start live food"</strong></div>
+      <div class="cmd-item">🪜 <strong>"detect stairs"</strong> / <strong>"start live stairs"</strong></div>
+      <div class="cmd-item">🚦 <strong>"detect traffic"</strong> / <strong>"start live traffic"</strong></div>
+      <div class="cmd-item">👀 <strong>"what is in front"</strong> / <strong>"describe scene"</strong></div>
+      <div class="cmd-item">🔍 <strong>"find my keys"</strong></div>
+      <div class="cmd-item">📄 <strong>"start rag scanner"</strong></div>
+      <div class="cmd-item">📖 <strong>"start page reader"</strong></div>
+      <div class="cmd-item">👤 <strong>"capture face"</strong> / <strong>"recognize face"</strong></div>
+      <div class="cmd-item">💰 <strong>"detect money"</strong></div>
+      <div class="cmd-item">🧠 <strong>"remember this"</strong> — save object</div>
+      <div class="cmd-item">🤖 <strong>"start assistant"</strong></div>
+      <div class="cmd-item">❓ <strong>"do you remember my keys"</strong></div>
+      <div class="cmd-item">🆘 <strong>"emergency"</strong> / <strong>"sos"</strong></div>
+      <div class="cmd-item">🛑 <strong>"stop all"</strong> — stops everything</div>
+      <div class="cmd-item">🤖 <strong>"help me find my medicine"</strong> — Agent</div>
+    </div>
+  </div>
+</div><!-- /tab1 -->
+
+<!-- ═══════════ TAB 2 ═══════════ -->
+<div class="tab-pane" id="tab2">
+  <div class="acc-wrap">
+    <div class="wake-orb" id="wakeOrb" onclick="triggerWakeOrb()">
+      <div class="wake-orb-inner">Always<br>Listening<br><span style="font-size:.7rem;opacity:.7">Say "My Eye"</span></div>
+    </div>
+    <div class="wake-status" id="wakeStatus">👂 Always listening for "My Eye"…</div>
+    <div class="wake-cmds">
+      🍽️ <strong>"My Eye, detect food"</strong><br>
+      🪜 <strong>"My Eye, detect stairs"</strong><br>
+      🚦 <strong>"My Eye, detect traffic"</strong><br>
+      👀 <strong>"My Eye, what is in front"</strong><br>
+      🔍 <strong>"My Eye, find my keys"</strong><br>
+      🧠 <strong>"My Eye, remember this"</strong><br>
+      🤖 <strong>"My Eye, start assistant"</strong><br>
+      ❓ <strong>"My Eye, do you remember my wallet"</strong><br>
+      🆘 <strong>"My Eye, emergency"</strong><br>
+      🛑 <strong>"My Eye, stop all"</strong><br>
+      🤖 <strong>"My Eye, help me find my medicine"</strong>
+    </div>
+    <div class="acc-response" id="accResponse"></div>
+  </div>
+</div>
+
+<!-- ═══════════ TAB 3 ═══════════ -->
+<div class="tab-pane" id="tab3">
+  <div class="memory-card">
+    <div class="card-hdr">
+      <h2><i class="fas fa-brain" style="color:var(--pink)"></i> Memory System</h2>
+      <span class="badge" id="memoryCountBadge">Loading…</span>
+    </div>
+    <p style="font-size:.85rem;color:var(--muted);margin-bottom:16px">Save objects with photos + location. Say "My Eye remember this" to save.</p>
+
+    <div class="card" style="border-color:rgba(244,114,182,.4);background:rgba(244,114,182,.06)">
+      <h3 style="font-size:.95rem;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px"><i class="fas fa-save" style="color:var(--pink)"></i> Save New Object</h3>
+      <div class="cam-wrap cam-h200" style="margin-bottom:10px">
+        <video id="memoryVideo" autoplay muted playsinline></video>
+        <div class="cam-placeholder" id="memoryPlaceholder"><i class="fas fa-camera"></i><span>Click Start Camera</span></div>
+      </div>
+      <div class="input-row">
+        <input type="text" id="memoryDescription" placeholder="Describe: e.g. red keys on kitchen table">
+      </div>
+      <div class="btn-row" style="margin-top:8px">
+        <button class="btn btn-memory" id="memoryCamBtn"><i class="fas fa-camera"></i> Start Camera</button>
+        <button class="btn btn-memory" id="memorySaveBtn" style="display:none" disabled><i class="fas fa-save"></i> Save to Memory</button>
+        <button class="btn btn-danger btn-sm" id="memoryCamStopBtn" style="display:none"><i class="fas fa-stop"></i></button>
+      </div>
+      <div class="result" id="memorySaveResult"></div>
+    </div>
+
+    <div class="card" style="border-color:rgba(108,99,255,.4);background:rgba(108,99,255,.06)">
+      <h3 style="font-size:.95rem;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px"><i class="fas fa-search" style="color:var(--accent2)"></i> Find Object from Memory</h3>
+      <div class="cam-wrap cam-h200" style="margin-bottom:10px">
+        <video id="findMemoryVideo" autoplay muted playsinline></video>
+        <div class="cam-placeholder" id="findMemoryPlaceholder"><i class="fas fa-search"></i><span>Camera (optional)</span></div>
+      </div>
+      <div class="input-row">
+        <input type="text" id="findMemoryQuery" placeholder="What are you looking for?">
+        <button class="btn btn-accent btn-sm" id="findMemoryMicBtn"><i class="fas fa-microphone"></i></button>
+      </div>
+      <div class="btn-row" style="margin-top:8px">
+        <button class="btn btn-primary" id="findMemoryCamBtn"><i class="fas fa-camera"></i> Start Camera</button>
+        <button class="btn btn-accent" id="findMemorySearchBtn"><i class="fas fa-search"></i> Find in Memory</button>
+        <button class="btn btn-danger btn-sm" id="findMemoryCamStopBtn" style="display:none"><i class="fas fa-stop"></i></button>
+      </div>
+      <div class="result" id="findMemoryResult"></div>
+    </div>
+
+    <div class="card" style="border-color:rgba(0,229,200,.3)">
+      <div class="card-hdr">
+        <h3 style="font-size:.95rem;font-weight:700;display:flex;align-items:center;gap:8px"><i class="fas fa-list" style="color:var(--accent)"></i> Saved Memories</h3>
+        <button class="btn btn-ghost btn-sm" onclick="loadMemoryList()"><i class="fas fa-refresh"></i> Refresh</button>
+      </div>
+      <div id="memoriesList"><div class="memory-empty"><div class="loader"></div><p>Loading…</p></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ TAB 4 ═══════════ -->
+<div class="tab-pane" id="tab4">
+  <div class="agent-trigger-card">
+    <div class="agent-trigger-icon">🤖</div>
+    <div class="agent-trigger-body">
+      <div class="agent-trigger-title">Agent Mode — Dynamic LLM Reasoning</div>
+      <div class="agent-trigger-desc">Give a goal. Agent checks memory → camera → 360 scan in order. Uses temp memory across steps. Speaks results. Listens to your voice automatically.</div>
+      <div class="agent-trigger-input-row">
+        <input type="text" id="agentGoalInput" placeholder="e.g. find my medicine and read the label…">
+        <button class="btn btn-agent btn-sm" id="agentStartBtn"><i class="fas fa-bolt"></i> Run Agent</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="border-color:var(--agent-border)">
+    <div class="card-hdr">
+      <h2><i class="fas fa-brain" style="color:var(--accent)"></i> Quick Presets</h2>
+      <span class="badge info" id="agentStatusBadge">Idle</span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <button class="btn btn-ghost btn-sm" onclick="runAgentPreset('find my medicine and read the label')">💊 Find &amp; Read Medicine</button>
+      <button class="btn btn-ghost btn-sm" onclick="runAgentPreset('go outside safely by checking the traffic light')">🚶 Go Outside Safely</button>
+      <button class="btn btn-ghost btn-sm" onclick="runAgentPreset('identify the food in front of me')">🍽️ Identify Food</button>
+      <button class="btn btn-ghost btn-sm" onclick="runAgentPreset('find my keys')">🔑 Find My Keys</button>
+      <button class="btn btn-ghost btn-sm" onclick="runAgentPreset('check if the stairs are safe to use')">🪜 Check Stairs</button>
+      <button class="btn btn-ghost btn-sm" onclick="runAgentPreset('read this document or medicine label')">📄 Read Document</button>
+    </div>
+  </div>
+
+  <div class="card" id="agentLogCard" style="border-color:var(--agent-border);display:none">
+    <div class="card-hdr">
+      <h2><i class="fas fa-terminal" style="color:var(--accent)"></i> Agent Execution Log</h2>
+      <button class="btn btn-ghost btn-sm" onclick="clearAgentLog()"><i class="fas fa-trash"></i> Clear</button>
+    </div>
+    <div id="agentLogList" style="font-family:'JetBrains Mono',monospace;font-size:.73rem;line-height:1.9;max-height:320px;overflow-y:auto;"></div>
+  </div>
+
+  <div class="card" style="border-color:rgba(0,229,200,.15);background:rgba(0,229,200,.03)">
+    <h2 style="font-size:.9rem;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px"><i class="fas fa-info-circle" style="color:var(--accent)"></i> How Agent Mode Works</h2>
+    <div style="font-size:.82rem;color:var(--muted);line-height:1.9">
+      <div>1. <strong style="color:var(--text)">You say</strong> "My Eye, help me find my medicine"</div>
+      <div>2. <strong style="color:var(--text)">Agent checks memory</strong> — instant, no camera needed</div>
+      <div>3. <strong style="color:var(--text)">If not found</strong> — agent opens camera and looks directly</div>
+      <div>4. <strong style="color:var(--text)">If still not found</strong> — agent starts 360° scan (turn slowly)</div>
+      <div>5. <strong style="color:var(--text)">Each result stored</strong> in temp memory — never repeats a step</div>
+      <div>6. <strong style="color:var(--text)">When agent asks you</strong> — mic starts automatically, just speak</div>
+      <div>7. <strong style="color:var(--text)">Say "found it"</strong> anytime to complete the task</div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /app -->
+
+<div class="mode-indicator" id="modeIndicator"><i class="fas fa-circle" style="font-size:.5rem"></i> System Ready</div>
+<div class="toast" id="toastEl"></div>
+
+<!-- ASSISTANT PANEL -->
+<div class="assistant-panel" id="assistantPanel">
+  <div class="assistant-orb">
+    <div class="assistant-orb-inner">🤖<br>Assistant<br><span style="font-size:.65rem;opacity:.7">Listening…</span></div>
+  </div>
+  <div class="assistant-status" id="assistantStatus">What are you finding, dear?</div>
+  <div class="assistant-response" id="assistantResponse"></div>
+  <button class="btn btn-danger btn-lg" onclick="closeAssistantPanel()"><i class="fas fa-times"></i> Close Assistant</button>
+</div>
+
+<!-- AGENT DASHBOARD -->
+<div class="agent-overlay" id="agentOverlay"></div>
+<div class="agent-dashboard" id="agentDashboard">
+  <div class="agent-complete-flash" id="agentCompleteFlash"></div>
+  <div class="agent-header">
+    <div class="agent-header-left">
+      <div class="agent-brain-icon">🧠</div>
+      <div>
+        <div class="agent-header-title">Agent Reasoning</div>
+        <div class="agent-header-subtitle" id="agentDashSubtitle">Initializing…</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div class="agent-status-pill" id="agentStatusPill">
+        <span class="agent-status-dot"></span>
+        <span id="agentStatusPillText">Running</span>
+      </div>
+      <button class="agent-close-btn" onclick="cancelAgentTask()" title="Cancel task"><i class="fas fa-times"></i></button>
+    </div>
+  </div>
+  <div class="agent-goal-bar">
+    <div class="agent-goal-label">Current Goal</div>
+    <div class="agent-goal-text" id="agentGoalDisplay">—</div>
+  </div>
+  <div class="agent-progress-track">
+    <div class="agent-progress-meta">
+      <span id="agentProgressLabel">LLM is thinking…</span>
+      <span id="agentProgressCount">Step 0</span>
+    </div>
+    <div class="agent-progress-bar-outer">
+      <div class="agent-progress-bar-inner" id="agentProgressBar" style="width:5%"></div>
+    </div>
+  </div>
+  <div class="agent-steps-container" id="agentStepsList">
+    <div style="text-align:center;padding:20px;color:var(--muted);font-size:.75rem">
+      <div class="loader"></div>
+      <p style="margin-top:8px">Agent is deciding the best approach…</p>
+    </div>
+  </div>
+  <div class="agent-current-strip" id="agentCurrentStrip">
+    <div class="agent-current-label">Executing Now</div>
+    <div class="agent-current-text">
+      <div class="agent-thinking-dots"><span></span><span></span><span></span></div>
+      <span id="agentCurrentTextContent">Thinking…</span>
+    </div>
+  </div>
+  <div class="agent-user-wait" id="agentUserWait">
+    <div class="agent-user-wait-label">⏳ Agent Needs Your Input</div>
+    <div class="agent-user-wait-question" id="agentUserWaitQuestion"></div>
+    <div class="agent-user-wait-hint">🎤 Mic is listening automatically — just speak your answer</div>
+    <div class="agent-mic-indicator" id="agentMicIndicator">
+      <div class="agent-mic-dot"></div>
+      <span id="agentMicStatus">Listening for your voice…</span>
+    </div>
+    <div class="agent-wait-cmds" id="agentWaitCmds">
+      <span class="agent-wait-cmd" onclick="agentSendQuickResponse('yes')">✅ Yes</span>
+      <span class="agent-wait-cmd" onclick="agentSendQuickResponse('no')">❌ No</span>
+      <span class="agent-wait-cmd" onclick="agentSendQuickResponse('found it')">✓ Found It</span>
+      <span class="agent-wait-cmd" onclick="agentSendQuickResponse('done')">✓ Done</span>
+      <span class="agent-wait-cmd" onclick="cancelAgentTask()">✗ Cancel</span>
+    </div>
+  </div>
+  <div class="agent-footer">
+    <button class="agent-cancel-btn" onclick="cancelAgentTask()"><i class="fas fa-stop-circle"></i> Cancel Task</button>
+    <div class="agent-steps-counter" id="agentStepsCounter">Iteration 0</div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+<script>
+'use strict';
+
+// ════════════════════════════════════════════════════════════════
+// GLOBALS
+// ════════════════════════════════════════════════════════════════
+let map, routingControl, currentMarker, currentPosition = null;
+let cameraStream = null, detectionInterval = null, isCameraActive = false;
+let detMode = 'normal', navMode = 'outdoor';
+let lastSpokenText = '', isSpeaking = false, speakQueue = [];
+let voiceStopped = false;
+let captureState = 'idle', capturedImageData = null, nameListening = false;
+
+const FEATURES = ['food','stair','traffic','wif','finder'];
+const myStreams = {};
+const myModes  = {food:'normal',stair:'normal',traffic:'normal',wif:'normal',finder:'normal'};
+const myLive   = {food:false,stair:false,traffic:false,wif:false,finder:false};
+const myTimers = {};
+let finderScanRunning = false;
+
+let ragActive=false, ragInterval=null, ragStream=null, ragStableCount=0;
+let readActive=false, readInterval=null, readStream=null, readStableCount=0;
+let memoryStream=null, findMemoryStream=null;
+
+// ONE recognition instance — reused everywhere including agent
+let isListening=false, recognition=null, wakeRec=null;
+const synth = window.speechSynthesis;
+let lastStopSeq = 0, assistantActive = false;
+
+// ── AGENT STATE ──────────────────────────────────────────────────
+let agentActive           = false;
+let agentSessionId        = '';
+let agentWaitingForUser   = false;
+let agentCurrentQuestionId= '';
+let agentCurrentQuestion  = '';
+let agentGoal             = '';
+let agentIteration        = 0;
+let agentListenTimeout    = null;
+let agentListenRetries    = 0;
+// recognitionPausedForAgent: true when we stopped mic so agent can speak
+let recognitionPausedForAgent = false;
+
+const AGENT_FIRST_TIMEOUT  = 20000;
+const AGENT_SECOND_TIMEOUT = 15000;
+const AGENT_MAX_RETRIES    = 2;
+
+// ════════════════════════════════════════════════════════════════
+// UTILS
+// ════════════════════════════════════════════════════════════════
+function esc(t){if(t==null)return'';const d=document.createElement('div');d.textContent=String(t);return d.innerHTML;}
+function wait(ms){return new Promise(r=>setTimeout(r,ms));}
+
+function toast(msg,type='info'){
+  const el=document.getElementById('toastEl');if(!el)return;
+  el.textContent=msg;
+  const c={success:'#22c55e',error:'#ff4d6d',info:'#6c63ff',warn:'#f0b429'};
+  el.style.background=c[type]||c.info;
+  el.style.color=(type==='success'||type==='warn')?'#000':'#fff';
+  el.classList.add('show');setTimeout(()=>el.classList.remove('show'),3200);
+}
+
+function setModeIndicator(text){
+  const el=document.getElementById('modeIndicator');
+  if(el)el.innerHTML='<i class="fas fa-circle" style="font-size:.5rem"></i> '+esc(text);
+  const lbl=document.getElementById('activeModeLbl');if(lbl)lbl.textContent=text;
+}
+
+function showModeBanner(text){
+  const t=document.getElementById('modeBannerText');if(t)t.textContent=text;
+  const b=document.getElementById('modeBanner');
+  if(b){b.classList.add('show');setTimeout(()=>b.classList.remove('show'),4500);}
+}
+
+function playBeep(freq=800,dur=150){
+  try{
+    const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;
+    const ctx=new AC(),osc=ctx.createOscillator(),g=ctx.createGain();
+    osc.connect(g);g.connect(ctx.destination);
+    osc.type='sine';osc.frequency.value=freq;g.gain.value=0.1;
+    osc.start();g.gain.exponentialRampToValueAtTime(0.00001,ctx.currentTime+dur/1000);
+    osc.stop(ctx.currentTime+dur/1000);
+  }catch(e){}
+}
+
+// ════════════════════════════════════════════════════════════════
+// TTS — speak pauses mic when agent is speaking
+// ════════════════════════════════════════════════════════════════
+function speak(text,priority=false){
+  if(!text||voiceStopped)return;
+  if(priority){speakQueue=[text];synth.cancel();isSpeaking=false;}
+  else speakQueue.push(text);
+  // Pause main mic so agent speech doesn't create a feedback loop
+  if(agentActive&&recognition&&isListening){
+    recognitionPausedForAgent=true;
+    try{recognition.stop();}catch(e){}
+    isListening=false;
+    const ind=document.getElementById('listenInd');if(ind)ind.classList.remove('active');
+    const st=document.getElementById('voiceStatusTxt');if(st)st.textContent='Paused by agent';
+  }
+  drainQueue();
+}
+
+function drainQueue(){
+  if(isSpeaking||speakQueue.length===0||voiceStopped)return;
+  const text=speakQueue.shift();
+  isSpeaking=true;synth.cancel();
+  const u=new SpeechSynthesisUtterance(text);
+  u.rate=0.92;u.pitch=1;
+  u.onend=()=>{
+    isSpeaking=false;
+    // After agent speech ends, restart mic if we were waiting for user
+    if(agentActive&&agentWaitingForUser&&recognitionPausedForAgent){
+      recognitionPausedForAgent=false;
+      setTimeout(()=>{if(agentWaitingForUser&&!isListening)startListeningVoice();},200);
+    }
+    setTimeout(drainQueue,200);
+  };
+  u.onerror=()=>{isSpeaking=false;setTimeout(drainQueue,200);};
+  synth.speak(u);lastSpokenText=text;
+}
+
+function stopVoiceOutput(){
+  synth.cancel();isSpeaking=false;speakQueue=[];voiceStopped=true;lastSpokenText='';
+  fetch('/api/voice/stop',{method:'POST'}).catch(()=>{});
+}
+function resumeVoiceOutput(){
+  voiceStopped=false;
+  fetch('/api/voice/resume',{method:'POST'}).catch(()=>{});
+  setTimeout(()=>speak('Voice resumed.'),100);
+}
+async function waitForSpeechEnd(){
+  return new Promise(res=>{
+    if(!synth.speaking){res();return;}
+    const chk=setInterval(()=>{if(!synth.speaking){clearInterval(chk);setTimeout(res,400);}},100);
+    setTimeout(()=>{clearInterval(chk);res();},8000);
+  });
+}
+
+// ════════════════════════════════════════════════════════════════
+// TABS
+// ════════════════════════════════════════════════════════════════
+function switchTab(n){
+  [1,2,3,4].forEach(i=>{
+    const tab=document.getElementById('tab'+i);
+    const btn=document.getElementById('tab'+i+'Btn');
+    if(tab)tab.classList.toggle('active',i===n);
+    if(btn)btn.classList.toggle('active',i===n);
+  });
+  if(n===2)startWakeWord();
+  if(n===3)loadMemoryList();
+}
+
+// ════════════════════════════════════════════════════════════════
+// GLOBAL STOP
+// ════════════════════════════════════════════════════════════════
+async function globalStop(){
+  FEATURES.forEach(f=>{stopMyEyeLive(f,true);stopMyEyeCamSilent(f);});
+  stopCamera(true);stopRagAutoCapture(true);stopReadAutoCapture(true);
+  stopMemoryCam(true);stopFindMemoryCam(true);
+  stopVoiceOutput();closeAssistantPanel();assistantActive=false;
+  if(agentActive){
+    const sid=agentSessionId;
+    agentActive=false;agentWaitingForUser=false;
+    agentSessionId='';agentCurrentQuestionId='';
+    recognitionPausedForAgent=false;
+    _clearAgentListenTimeout();agentStopMicIndicator();
+    hideAgentDashboard();
+    document.body.classList.remove('agent-mode-active');
+    if(sid)fetch('/api/agent/stop',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:sid})}).catch(()=>{});
+  }
+  try{
+    await fetch('/api/mode/global-stop',{method:'POST'});
+    setModeIndicator('All stopped — idle');toast('All modes stopped','success');
+    setTimeout(()=>{voiceStopped=false;speak('All stopped. Say start camera to restart.');},1500);
+  }catch(e){setModeIndicator('All stopped');}
+}
+
+async function pollGlobalStop(){
+  try{
+    const r=await fetch('/api/global-stop-status');const d=await r.json();
+    if(d.stopped&&d.sequence!==lastStopSeq){
+      lastStopSeq=d.sequence;
+      FEATURES.forEach(f=>stopMyEyeCamSilent(f));
+      stopCamera(true);stopRagAutoCapture(true);stopReadAutoCapture(true);
+      stopMemoryCam(true);stopFindMemoryCam(true);
+      await fetch('/api/global-stop-reset',{method:'POST'}).catch(()=>{});
+    }
+  }catch(e){}
+}
+
+// ════════════════════════════════════════════════════════════════
+// MAP
+// ════════════════════════════════════════════════════════════════
+function initMap(){
+  if(typeof L==='undefined')return;
+  map=L.map('map').setView([20.0,77.0],5);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'}).addTo(map);
+  if(navigator.geolocation){
+    navigator.geolocation.watchPosition(pos=>{
+      currentPosition=[pos.coords.latitude,pos.coords.longitude];
+      map.setView(currentPosition,16);
+      if(currentMarker)currentMarker.setLatLng(currentPosition);
+      else currentMarker=L.marker(currentPosition).addTo(map).bindPopup('You are here');
+      const sl=document.getElementById('sosLocation');
+      if(sl)sl.textContent=`📍 ${currentPosition[0].toFixed(4)}°, ${currentPosition[1].toFixed(4)}°`;
+    },()=>{console.warn('GPS unavailable');});
+  }
+}
+
+function setNavMode(mode){
+  navMode=mode;
+  const od=document.getElementById('outdoorCtrl');const id2=document.getElementById('indoorCtrl');
+  if(od)od.style.display=mode==='outdoor'?'block':'none';
+  if(id2)id2.style.display=mode==='indoor'?'block':'none';
+  const ob=document.getElementById('outdoorModeBtn');const ib=document.getElementById('indoorModeBtn');
+  if(ob)ob.classList.toggle('active',mode==='outdoor');if(ib)ib.classList.toggle('active',mode==='indoor');
+  const nb=document.getElementById('navModeBadge');if(nb)nb.textContent=mode==='outdoor'?'🌍 Outdoor':'🏠 Indoor';
+  if(mode==='indoor')loadIndoorMap();
+  fetch('/api/indoor/navigation-modes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode})}).catch(()=>{});
+}
+
+async function loadIndoorMap(){
+  try{
+    const r=await fetch('/api/indoor/map');const d=await r.json();
+    if(d.status==='success'){
+      const sel=document.getElementById('destRoom');
+      if(sel){
+        sel.innerHTML='<option value="">Select destination…</option>';
+        (d.rooms||[]).forEach(room=>{const o=document.createElement('option');o.value=room.id;o.textContent=room.name;sel.appendChild(o);});
+      }
+      const nc=document.getElementById('indoorNavCtrl');if(nc)nc.style.display='block';
+      const dot=document.getElementById('indoorDot');if(dot)dot.className='status-dot captured';
+      const txt=document.getElementById('indoorStatusTxt');if(txt)txt.textContent=`✅ Map loaded: ${(d.rooms||[]).length} rooms`;
+    }
+  }catch(e){}
+}
+
+async function findRoute(){
+  const di=document.getElementById('endLocation');const dest=di?di.value.trim():'';
+  if(!dest||!currentPosition){alert('Enter destination and ensure GPS is active');return;}
+  try{
+    const r=await fetch('/api/geocode',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({address:dest})});
+    const d=await r.json();if(d.error){alert('Destination not found');return;}
+    if(routingControl&&map)map.removeControl(routingControl);
+    routingControl=L.Routing.control({waypoints:[L.latLng(currentPosition[0],currentPosition[1]),L.latLng(d.lat,d.lon)],routeWhileDragging:false}).addTo(map);
+  }catch(e){console.error('Route error:',e);}
+}
+
+async function indoorNavigateToRoom(destination){
+  if(!isCameraActive){speak('Please start the camera first');return;}
+  const video=document.getElementById('cameraFeed');const canvas=document.getElementById('cameraCanvas');
+  canvas.width=video.videoWidth||640;canvas.height=video.videoHeight||480;
+  canvas.getContext('2d').drawImage(video,0,0);
+  const imgData=canvas.toDataURL('image/jpeg',0.8);
+  try{
+    const r=await fetch('/api/indoor/navigate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({destination,image_data:imgData})});
+    const d=await r.json();
+    if(d.status==='success'&&d.instructions&&d.instructions.length>0){
+      let msg=`To reach the ${destination}: `;
+      d.instructions.forEach((inst,i)=>{msg+=(i===0?'':'Then ')+inst.instruction.toLowerCase()+'. ';});
+      msg+=`Total approximately ${d.total_steps} steps.`;
+      speak(msg,true);
+      const ii=document.getElementById('indoorInstr');if(ii)ii.style.display='block';
+      const il=document.getElementById('instrList');if(il)il.innerHTML=d.instructions.map(inst=>`<p style="font-size:.82rem;margin:2px 0">Step ${inst.step}: ${esc(inst.instruction)}</p>`).join('');
+      const it=document.getElementById('instrTotal');if(it)it.textContent=`Total: ${d.total_steps} steps`;
+    }else{speak(`Could not find route to ${destination}`);}
+  }catch(e){speak('Error finding indoor route');}
+}
+
+// ════════════════════════════════════════════════════════════════
+// MAIN CAMERA
+// ════════════════════════════════════════════════════════════════
+async function startCamera(){
+  if(isCameraActive)return;
+  try{
+    cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+    const video=document.getElementById('cameraFeed');if(!video)return;
+    video.srcObject=cameraStream;video.style.display='block';
+    const ph=document.getElementById('camPlaceholder');if(ph)ph.style.display='none';
+    await new Promise(res=>{video.onloadedmetadata=()=>{video.play();res();};});
+    const cb=document.getElementById('camBadge');if(cb){cb.textContent='📷 On';cb.className='badge ok';}
+    isCameraActive=true;
+    fetch('/api/global-stop-reset',{method:'POST'}).catch(()=>{});
+    speak('Camera started');
+  }catch(e){toast('Cannot access camera: '+e.message,'error');speak('Cannot access camera');}
+}
+
+function stopCamera(silent=false){
+  if(cameraStream){cameraStream.getTracks().forEach(t=>t.stop());cameraStream=null;}
+  const video=document.getElementById('cameraFeed');if(video)video.style.display='none';
+  const ph=document.getElementById('camPlaceholder');if(ph)ph.style.display='flex';
+  const cb=document.getElementById('camBadge');if(cb){cb.textContent='📷 Off';cb.className='badge';}
+  isCameraActive=false;
+  if(detectionInterval){clearInterval(detectionInterval);detectionInterval=null;}
+  if(!silent)speak('Camera stopped');
+}
+
+function setDetMode(mode){
+  detMode=mode;
+  if(!isCameraActive){speak(`Starting camera for ${mode} mode`);startCamera().then(()=>setTimeout(startDetection,1500));}
+  else startDetection();
+}
+
+function startDetection(){
+  if(detectionInterval)clearInterval(detectionInterval);
+  detectionInterval=setInterval(async()=>{
+    if(!isCameraActive)return;
+    const video=document.getElementById('cameraFeed');const canvas=document.getElementById('cameraCanvas');
+    if(!video||video.readyState!==video.HAVE_ENOUGH_DATA)return;
+    canvas.width=video.videoWidth||640;canvas.height=video.videoHeight||480;
+    canvas.getContext('2d').drawImage(video,0,0);
+    const imgData=canvas.toDataURL('image/jpeg',0.8);
+    let endpoint='/api/analyze-frame';
+    if(detMode==='face')endpoint='/api/recognize-face';
+    if(detMode==='money')endpoint='/api/detect-money';
+    try{
+      const r=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image_data:imgData})});
+      const d=await r.json();
+      if(d.status==='success'){
+        const list=document.getElementById('objectList');
+        if(list){
+          if(detMode==='face'){
+            list.innerHTML=(d.recognizedFaces&&d.recognizedFaces.length>0)?d.recognizedFaces.map(f=>`<li class="obj-item"><i class="fas fa-user"></i> ${esc(f.name)}</li>`).join(''):'<li class="obj-item">No faces recognized</li>';
+          }else if(detMode==='money'){
+            list.innerHTML=d.currency?`<li class="obj-item"><i class="fas fa-money-bill-wave"></i> ${esc(d.currency)}</li>`:'<li class="obj-item">No currency detected</li>';
+          }else{
+            list.innerHTML=(d.detectedObjects&&d.detectedObjects.length>0)?d.detectedObjects.map(o=>`<li class="obj-item">${esc(o)}</li>`).join(''):'<li class="obj-item">No objects detected</li>';
+          }
+        }
+        const desc=d.audioDescription||d.voice_response||'';
+        if(desc){const db=document.getElementById('descBox');if(db)db.textContent=desc;speak(desc);}
+      }
+    }catch(e){}
+  },3000);
+}
+
+// ════════════════════════════════════════════════════════════════
+// FACE CAPTURE
+// ════════════════════════════════════════════════════════════════
+async function startCaptureFlow(){
+  if(!isCameraActive){speak('Please start the camera first');return;}
+  const r=await fetch('/api/face/start-capture',{method:'POST'});const d=await r.json();
+  if(!d.success){showModeBanner(d.message||'Mode conflict');speak(d.message||'Mode conflict');return;}
+  if(detectionInterval){clearInterval(detectionInterval);detectionInterval=null;}
+  const video=document.getElementById('cameraFeed');const canvas=document.getElementById('cameraCanvas');
+  canvas.width=video.videoWidth||640;canvas.height=video.videoHeight||480;
+  canvas.getContext('2d').drawImage(video,0,0);
+  capturedImageData=canvas.toDataURL('image/jpeg',0.92);
+  captureState='waiting_name';
+  const db=document.getElementById('descBox');if(db)db.textContent='📸 Face captured! Listening for name…';
+  speak('Face captured. Please say the name now.',true);
+  await waitForSpeechEnd();
+  await fetch('/api/face/set-name-listening',{method:'POST'}).catch(()=>{});
+  nameListening=true;startListeningForName();
+}
+
+function startListeningForName(){
+  if(!('webkitSpeechRecognition'in window||'SpeechRecognition'in window))return;
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  const nameRec=new SR();nameRec.lang='en-IN';nameRec.continuous=false;nameRec.interimResults=false;
+  nameRec.onresult=async(e)=>{if(!nameListening)return;const name=e.results[0][0].transcript.trim();nameListening=false;nameRec.stop();await saveFaceWithName(name);};
+  nameRec.onerror=()=>{nameListening=false;speak('Could not hear the name. Please try again.');captureState='idle';if(isCameraActive)startDetection();};
+  nameRec.start();
+}
+
+async function saveFaceWithName(name){
+  if(!capturedImageData||!name){captureState='idle';if(isCameraActive)startDetection();return;}
+  try{
+    const r=await fetch('/api/capture-face',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image_data:capturedImageData,name})});
+    const d=await r.json();
+    if(d.status==='success'){speak(`Face saved for ${d.name}`,true);toast(`✅ Saved for ${d.name}`,'success');}
+    else if(d.status==='no_face'){speak(d.voice_response||d.message,true);}
+    else{speak(d.voice_response||'Could not save face. Please try again.',true);}
+  }catch(e){speak('Network error while saving face.',true);}
+  finally{captureState='idle';capturedImageData=null;if(isCameraActive)startDetection();}
+}
+
+// ════════════════════════════════════════════════════════════════
+// MYEYE FEATURE CAMERAS
+// ════════════════════════════════════════════════════════════════
+async function startMyEyeCam(feature){
+  if(myStreams[feature])return;
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:1280},height:{ideal:720}}});
+    myStreams[feature]=stream;
+    const video=document.getElementById(feature+'Video');
+    if(video){video.srcObject=stream;video.style.display='block';}
+    const ph=document.getElementById(feature+'Placeholder');if(ph)ph.style.display='none';
+    await new Promise(res=>{if(video)video.onloadedmetadata=()=>{video.play();res();};else res();});
+    for(let i=0;i<30;i++){if(video&&video.videoWidth>0)break;await wait(100);}
+    const cb=document.getElementById(feature+'CamBtn');if(cb)cb.style.display='none';
+    const ab=document.getElementById(feature+'AnalyzeBtn');if(ab){ab.style.display='block';ab.disabled=false;}
+    const lb=document.getElementById(feature+'LiveBtn');if(lb){lb.style.display='block';lb.disabled=false;}
+    if(feature==='finder'){const fsb=document.getElementById('finderStartScanBtn');if(fsb)fsb.style.display='block';}
+    speak(feature+' camera ready');
+  }catch(e){toast('Cannot access camera for '+feature,'error');speak('Cannot access camera');}
+}
+
+function stopMyEyeCamSilent(feature){
+  if(myStreams[feature]){myStreams[feature].getTracks().forEach(t=>t.stop());myStreams[feature]=null;}
+  const video=document.getElementById(feature+'Video');if(video)video.style.display='none';
+  const ph=document.getElementById(feature+'Placeholder');if(ph)ph.style.display='flex';
+  const cb=document.getElementById(feature+'CamBtn');if(cb)cb.style.display='block';
+  const ab=document.getElementById(feature+'AnalyzeBtn');if(ab){ab.style.display='none';ab.disabled=true;}
+  const lb=document.getElementById(feature+'LiveBtn');if(lb){lb.style.display='none';lb.disabled=true;}
+  if(feature==='finder'){const sb=document.getElementById('finderStartScanBtn');if(sb)sb.style.display='none';}
+  stopMyEyeLive(feature,true);
+}
+
+function setMyEyeMode(feature,mode){
+  myModes[feature]=mode;
+  const nm=document.getElementById(feature+'ModeNormal');const lm=document.getElementById(feature+'ModeLive');
+  if(nm)nm.classList.toggle('active',mode==='normal');if(lm)lm.classList.toggle('active',mode==='live');
+  if(mode==='normal'&&myLive[feature])stopMyEyeLive(feature,true);
+}
+
+function stopMyEyeLive(feature,silent=false){
+  myLive[feature]=false;
+  if(myTimers[feature]){clearTimeout(myTimers[feature]);myTimers[feature]=null;}
+  const ind=document.getElementById(feature+'LiveInd');if(ind)ind.classList.remove('show');
+  const sb=document.getElementById(feature+'StopBtn');if(sb)sb.style.display='none';
+  const ab=document.getElementById(feature+'AnalyzeBtn');if(ab&&myStreams[feature]){ab.style.display='block';ab.disabled=false;}
+  const lb=document.getElementById(feature+'LiveBtn');if(lb&&myStreams[feature]){lb.style.display='block';lb.disabled=false;}
+}
+
+async function runMyEyeNormal(feature){
+  if(!myStreams[feature]){speak('Please start the camera first');return;}
+  const ab=document.getElementById(feature+'AnalyzeBtn');
+  const result=document.getElementById(feature+'Result');
+  if(ab)ab.disabled=true;
+  if(result){result.className='result show';result.innerHTML='<div class="loader"></div><p>Capturing…</p>';}
+  const video=document.getElementById(feature+'Video');
+  const canvas=document.createElement('canvas');
+  canvas.width=video.videoWidth||640;canvas.height=video.videoHeight||480;
+  const frames=[];
+  const count={food:4,stair:5,traffic:6,wif:5,finder:6}[feature]||4;
+  for(let i=0;i<count;i++){
+    if(!myStreams[feature])break;
+    canvas.getContext('2d').drawImage(video,0,0);
+    frames.push(canvas.toDataURL('image/jpeg',0.85).split(',')[1]);
+    await wait(400);
+  }
+  if(frames.length===0){if(ab)ab.disabled=false;return;}
+  if(result)result.innerHTML='<div class="loader"></div><p>Analyzing…</p>';
+  const body={frames};
+  if(feature==='wif'){const qi=document.getElementById('wifQuestion');if(qi)body.question=qi.value||'What is in front of me?';}
+  if(feature==='finder'){const qi=document.getElementById('findObjectQuery');if(qi)body.query=qi.value||'';}
+  const eps={food:'/api/food',stair:'/api/stairs',traffic:'/api/traffic',wif:'/api/whatshere',finder:'/api/find-object'};
+  try{
+    const r=await fetch(eps[feature],{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const d=await r.json();
+    const txt=d.result||d.voice_response||'';
+    if(result){
+      if(d.success||txt){result.innerHTML=`<i class="fas fa-check-circle" style="color:var(--accent)"></i> ${esc(txt)}`;speak(txt,true);}
+      else{result.innerHTML=`<i class="fas fa-exclamation-triangle" style="color:var(--accent3)"></i> ${esc(txt||'Analysis failed')}`;}
+    }
+  }catch(e){if(result)result.innerHTML='<i class="fas fa-exclamation-triangle"></i> Network error';}
+  if(ab)ab.disabled=false;
+}
+
+async function startMyEyeLive(feature){
+  if(myLive[feature])return;
+  if(!myStreams[feature]){speak('Please start the camera first');return;}
+  myLive[feature]=true;
+  const ind=document.getElementById(feature+'LiveInd');if(ind)ind.classList.add('show');
+  const ab=document.getElementById(feature+'AnalyzeBtn');const lb=document.getElementById(feature+'LiveBtn');const sb=document.getElementById(feature+'StopBtn');
+  if(ab)ab.style.display='none';if(lb)lb.style.display='none';if(sb)sb.style.display='block';
+  runMyEyeLiveLoop(feature);
+}
+
+async function runMyEyeLiveLoop(feature){
+  if(!myLive[feature]||!myStreams[feature])return;
+  const video=document.getElementById(feature+'Video');
+  const canvas=document.createElement('canvas');
+  canvas.width=video.videoWidth||640;canvas.height=video.videoHeight||480;
+  canvas.getContext('2d').drawImage(video,0,0);
+  const frame=canvas.toDataURL('image/jpeg',0.85).split(',')[1];
+  const body={frames:[frame]};
+  if(feature==='wif'){const qi=document.getElementById('wifQuestion');if(qi)body.question=qi.value||'What is in front of me?';}
+  if(feature==='finder'){const qi=document.getElementById('findObjectQuery');if(qi)body.query=qi.value||'';}
+  const eps={food:'/api/food',stair:'/api/stairs',traffic:'/api/traffic',wif:'/api/whatshere',finder:'/api/find-object'};
+  try{
+    const r=await fetch(eps[feature],{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const d=await r.json();
+    const re=document.getElementById(feature+'Result');
+    const txt=d.result||d.voice_response||'';
+    if((d.success||txt)&&re){re.className='result show';re.innerHTML=`<i class="fas fa-eye"></i> ${esc(txt)}`;speak(txt);}
+  }catch(e){}
+  myTimers[feature]=setTimeout(()=>runMyEyeLiveLoop(feature),4500);
+}
+
+async function startFinderScan(){
+  if(!myStreams['finder']){speak('Please start the camera first');return;}
+  const qi=document.getElementById('findObjectQuery');const query=(qi?qi.value:'').trim();
+  if(!query){speak('Please enter what you want to find');return;}
+  // Check memory first
+  try{
+    const mr=await fetch('/api/memory/find',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query,frames:[]})});
+    const md=await mr.json();
+    if(md.success&&md.found_in_memory){
+      const result=document.getElementById('finderResult');
+      if(result){result.className='result show';result.innerHTML=`<i class="fas fa-brain" style="color:var(--pink)"></i> <strong>From Memory:</strong> ${esc(md.message||md.voice_response||'')}`;}
+      speak(md.message||md.voice_response||'',true);
+      const fb=document.getElementById('finderBadge');if(fb){fb.textContent='🧠 From Memory';fb.className='badge info';}
+      return;
+    }
+  }catch(e){}
+  finderScanRunning=true;
+  const fb=document.getElementById('finderBadge');if(fb){fb.textContent='🔍 Scanning…';fb.className='badge warn';}
+  const fsb=document.getElementById('finderStartScanBtn');if(fsb)fsb.disabled=true;
+  const video=document.getElementById('finderVideo');
+  const canvas=document.createElement('canvas');
+  canvas.width=video.videoWidth||640;canvas.height=video.videoHeight||480;
+  const frames=[];
+  const prog=document.getElementById('finderProg');const pf=document.getElementById('finderProgFill');
+  if(prog)prog.style.display='block';
+  speak(`Scanning for ${query}. Please slowly turn around 360 degrees.`);
+  for(let i=0;i<10;i++){
+    if(!finderScanRunning)break;
+    canvas.getContext('2d').drawImage(video,0,0);
+    frames.push(canvas.toDataURL('image/jpeg',0.85).split(',')[1]);
+    if(pf)pf.style.width=`${(i+1)*10}%`;
+    if(i<9)await wait(3000);
+  }
+  if(prog)prog.style.display='none';
+  const result=document.getElementById('finderResult');
+  if(result){result.className='result show';result.innerHTML='<div class="loader"></div><p>Analyzing 10 frames…</p>';}
+  try{
+    const r=await fetch('/api/find-object',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query,frames})});
+    const d=await r.json();const txt=d.result||d.voice_response||'';
+    if(result){
+      if(d.success||txt){result.innerHTML=`<i class="fas fa-check-circle" style="color:var(--accent)"></i> ${esc(txt)}`;speak(txt,true);}
+      else{result.innerHTML=`<i class="fas fa-exclamation-triangle"></i> ${esc(txt||'Object not found')}`;speak(txt||'Object not found');}
+    }
+  }catch(e){if(result)result.innerHTML='<i class="fas fa-exclamation-triangle"></i> Network error';speak('Network error');}
+  finderScanRunning=false;if(fsb)fsb.disabled=false;
+  if(fb){fb.textContent='🔍 Done';fb.className='badge ok';}
+}
+
+// ════════════════════════════════════════════════════════════════
+// RAG AUTO CAPTURE
+// ════════════════════════════════════════════════════════════════
+async function startRagAutoCapture(){
+  if(ragActive){speak('RAG scanner already running');return;}
+  ragActive=true;ragStableCount=0;
+  const rb=document.getElementById('ragBadge');if(rb){rb.textContent='🟡 Scanning…';rb.className='badge warn';}
+  const rd=document.getElementById('ragDot');if(rd)rd.className='status-dot scanning';
+  const rt=document.getElementById('ragStatusTxt');if(rt)rt.textContent='📷 Starting camera…';
+  document.getElementById('stopRagBtn').style.display='block';
+  document.getElementById('startRagBtn').style.display='none';
+  const rr=document.getElementById('ragResult');if(rr)rr.className='result';
+  try{
+    ragStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+    const video=document.getElementById('ragCamera');
+    if(video){video.srcObject=ragStream;video.style.display='block';}
+    const ph=document.getElementById('ragPlaceholder');if(ph)ph.style.display='none';
+    await new Promise(res=>{if(video)video.onloadedmetadata=()=>{video.play();res();};else res();});
+    for(let i=0;i<30;i++){if(video&&video.videoWidth>0)break;await wait(100);}
+  }catch(e){speak('Cannot access camera for RAG scanner');stopRagAutoCapture(true);return;}
+  speak('RAG scanner started. Hold any document in front of the camera.');
+  ragInterval=setInterval(async()=>{
+    if(!ragActive)return;
+    const video=document.getElementById('ragCamera');
+    if(!video||!video.videoWidth)return;
+    const canvas=document.createElement('canvas');canvas.width=video.videoWidth;canvas.height=video.videoHeight;
+    canvas.getContext('2d').drawImage(video,0,0);const imgData=canvas.toDataURL('image/jpeg',0.92);
+    try{
+      const dr=await fetch('/api/detect-document-frame',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image_data:imgData,mode:'rag'})});
+      const dd=await dr.json();
+      if(dd.status==='detected'){
+        ragStableCount++;
+        const t=document.getElementById('ragStatusTxt');if(t)t.textContent=`📄 Document detected (${ragStableCount}/2)…`;
+        if(ragStableCount>=2){
+          clearInterval(ragInterval);ragInterval=null;
+          const st=document.getElementById('ragStatusTxt');if(st)st.textContent='📸 Capturing document…';
+          const cr=await fetch('/api/auto-capture-rag',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image_data:imgData})});
+          const cd=await cr.json();
+          if(cd.status==='success'){
+            if(rd)rd.className='status-dot captured';
+            if(rt)rt.textContent='✅ Document saved!';
+            if(rb){rb.textContent='🟢 Saved!';rb.className='badge ok';}
+            const r2=document.getElementById('ragResult');
+            if(r2){r2.className='result show';r2.innerHTML=esc(cd.message||cd.voice_response||'');}
+            speak(cd.message||cd.voice_response||'');setTimeout(()=>stopRagAutoCapture(true),4000);
+          }else{ragStableCount=0;}
+        }
+      }else{ragStableCount=0;const t=document.getElementById('ragStatusTxt');if(t)t.textContent='👀 Looking for document…';}
+    }catch(e){}
+  },600);
+}
+
+function stopRagAutoCapture(silent=false){
+  ragActive=false;if(ragInterval){clearInterval(ragInterval);ragInterval=null;}
+  if(ragStream){ragStream.getTracks().forEach(t=>t.stop());ragStream=null;}
+  const video=document.getElementById('ragCamera');if(video)video.style.display='none';
+  const ph=document.getElementById('ragPlaceholder');if(ph)ph.style.display='flex';
+  const rd=document.getElementById('ragDot');if(rd)rd.className='status-dot';
+  const rt=document.getElementById('ragStatusTxt');if(rt)rt.textContent='Click "Start Auto-Scanner"';
+  const rb=document.getElementById('ragBadge');if(rb){rb.textContent='🟤 Idle';rb.className='badge';}
+  document.getElementById('stopRagBtn').style.display='none';document.getElementById('startRagBtn').style.display='block';
+  if(!silent)speak('RAG scanner stopped.');
+}
+
+// ════════════════════════════════════════════════════════════════
+// PAGE READER
+// ════════════════════════════════════════════════════════════════
+async function startReadAutoCapture(){
+  if(readActive){speak('Page reader already running');return;}
+  readActive=true;readStableCount=0;
+  const rb=document.getElementById('readBadge');if(rb){rb.textContent='🟡 Scanning…';rb.className='badge warn';}
+  const rd=document.getElementById('readDot');if(rd)rd.className='status-dot scanning';
+  const rt=document.getElementById('readStatusTxt');if(rt)rt.textContent='📷 Starting camera…';
+  document.getElementById('stopReadBtn').style.display='block';document.getElementById('startReadBtn').style.display='none';
+  const rr=document.getElementById('readResult');if(rr)rr.className='result';
+  try{
+    readStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+    const video=document.getElementById('readCamera');
+    if(video){video.srcObject=readStream;video.style.display='block';}
+    const ph=document.getElementById('readPlaceholder');if(ph)ph.style.display='none';
+    await new Promise(res=>{if(video)video.onloadedmetadata=()=>{video.play();res();};else res();});
+    for(let i=0;i<30;i++){if(video&&video.videoWidth>0)break;await wait(100);}
+  }catch(e){speak('Cannot access camera for page reader');stopReadAutoCapture(true);return;}
+  speak('Page reader started. Hold your book or label in front of the camera.');
+  readInterval=setInterval(async()=>{
+    if(!readActive)return;
+    const video=document.getElementById('readCamera');if(!video||!video.videoWidth)return;
+    const canvas=document.createElement('canvas');canvas.width=video.videoWidth;canvas.height=video.videoHeight;
+    canvas.getContext('2d').drawImage(video,0,0);const imgData=canvas.toDataURL('image/jpeg',0.92);
+    try{
+      const dr=await fetch('/api/detect-document-frame',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image_data:imgData,mode:'read'})});
+      const dd=await dr.json();
+      if(dd.status==='detected'){
+        readStableCount++;
+        const t=document.getElementById('readStatusTxt');if(t)t.textContent=`📖 Page detected (${readStableCount}/2)…`;
+        if(readStableCount>=2){
+          clearInterval(readInterval);readInterval=null;
+          const st=document.getElementById('readStatusTxt');if(st)st.textContent='📖 Reading page…';
+          const frames=[];
+          for(let i=0;i<3;i++){canvas.getContext('2d').drawImage(video,0,0);frames.push(canvas.toDataURL('image/jpeg',0.92).split(',')[1]);if(i<2)await wait(700);}
+          const cr=await fetch('/api/page-reader/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({frames})});
+          const cd=await cr.json();
+          if(cd.status==='success'){
+            const rd2=document.getElementById('readDot');if(rd2)rd2.className='status-dot captured';
+            if(rt)rt.textContent='✅ Page read!';if(rb){rb.textContent='🟢 Done!';rb.className='badge ok';}
+            const r2=document.getElementById('readResult');
+            if(r2){r2.className='result show';r2.innerHTML=esc(cd.description||cd.voice_response||'');}
+            speak(cd.description||cd.voice_response||'',true);setTimeout(()=>stopReadAutoCapture(true),8000);
+          }else{readStableCount=0;}
+        }
+      }else{readStableCount=0;const t=document.getElementById('readStatusTxt');if(t)t.textContent='📖 Hold your book in front of the camera…';}
+    }catch(e){}
+  },600);
+}
+
+function stopReadAutoCapture(silent=false){
+  readActive=false;if(readInterval){clearInterval(readInterval);readInterval=null;}
+  if(readStream){readStream.getTracks().forEach(t=>t.stop());readStream=null;}
+  const video=document.getElementById('readCamera');if(video)video.style.display='none';
+  const ph=document.getElementById('readPlaceholder');if(ph)ph.style.display='flex';
+  const rd=document.getElementById('readDot');if(rd)rd.className='status-dot';
+  const rt=document.getElementById('readStatusTxt');if(rt)rt.textContent='Click "Start Auto-Reader"';
+  const rb=document.getElementById('readBadge');if(rb){rb.textContent='🔵 Idle';rb.className='badge';}
+  document.getElementById('stopReadBtn').style.display='none';document.getElementById('startReadBtn').style.display='block';
+  if(!silent)speak('Page reader stopped.');
+}
+
+// ════════════════════════════════════════════════════════════════
+// MEMORY
+// ════════════════════════════════════════════════════════════════
+async function startMemoryCam(){
+  if(memoryStream)return;
+  try{
+    memoryStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+    const video=document.getElementById('memoryVideo');
+    if(video){video.srcObject=memoryStream;video.style.display='block';}
+    const ph=document.getElementById('memoryPlaceholder');if(ph)ph.style.display='none';
+    await new Promise(res=>{if(video)video.onloadedmetadata=()=>{video.play();res();};else res();});
+    for(let i=0;i<30;i++){if(video&&video.videoWidth>0)break;await wait(100);}
+    const cb=document.getElementById('memoryCamBtn');if(cb)cb.style.display='none';
+    const sb=document.getElementById('memorySaveBtn');if(sb){sb.style.display='block';sb.disabled=false;}
+    const st=document.getElementById('memoryCamStopBtn');if(st)st.style.display='block';
+    speak('Camera ready. Describe the object then click Save.');
+  }catch(e){toast('Cannot access camera','error');speak('Cannot access camera');}
+}
+
+function stopMemoryCam(silent=false){
+  if(memoryStream){memoryStream.getTracks().forEach(t=>t.stop());memoryStream=null;}
+  const video=document.getElementById('memoryVideo');if(video)video.style.display='none';
+  const ph=document.getElementById('memoryPlaceholder');if(ph)ph.style.display='flex';
+  const cb=document.getElementById('memoryCamBtn');if(cb)cb.style.display='block';
+  const sb=document.getElementById('memorySaveBtn');if(sb){sb.style.display='none';sb.disabled=true;}
+  const st=document.getElementById('memoryCamStopBtn');if(st)st.style.display='none';
+}
+
+async function saveMemoryObject(){
+  const di=document.getElementById('memoryDescription');const description=di?di.value.trim():'';
+  if(!description){speak('Please describe the object and its location first.');toast('Please enter a description','warn');return;}
+  if(!memoryStream){speak('Please start the camera first.');return;}
+  const saveBtn=document.getElementById('memorySaveBtn');if(saveBtn)saveBtn.disabled=true;
+  const result=document.getElementById('memorySaveResult');
+  if(result){result.className='result show';result.innerHTML='<div class="loader"></div><p>Capturing 2 photos…</p>';}
+  const video=document.getElementById('memoryVideo');const canvas=document.createElement('canvas');
+  canvas.width=video.videoWidth||640;canvas.height=video.videoHeight||480;
+  const frames=[];
+  for(let i=0;i<2;i++){canvas.getContext('2d').drawImage(video,0,0);frames.push(canvas.toDataURL('image/jpeg',0.9).split(',')[1]);if(i<1)await wait(800);}
+  if(result)result.innerHTML='<div class="loader"></div><p>Saving to memory…</p>';
+  try{
+    const r=await fetch('/api/memory/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({description,frames})});
+    const d=await r.json();const msg=d.message||d.voice_response||'';
+    if(d.success){
+      if(result)result.innerHTML=`<i class="fas fa-check-circle" style="color:var(--green)"></i> ${esc(msg)}`;
+      speak(msg,true);toast('Memory saved!','success');
+      if(di)di.value='';stopMemoryCam(true);loadMemoryList();
+    }else{
+      if(result)result.innerHTML=`<i class="fas fa-exclamation-triangle" style="color:var(--accent3)"></i> ${esc(msg||'Save failed')}`;
+      speak(msg||'Save failed');
+    }
+  }catch(e){if(result)result.innerHTML='<i class="fas fa-exclamation-triangle"></i> Network error';speak('Network error while saving memory.');}
+  if(saveBtn)saveBtn.disabled=false;
+}
+
+async function startFindMemoryCam(){
+  if(findMemoryStream)return;
+  try{
+    findMemoryStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+    const video=document.getElementById('findMemoryVideo');
+    if(video){video.srcObject=findMemoryStream;video.style.display='block';}
+    const ph=document.getElementById('findMemoryPlaceholder');if(ph)ph.style.display='none';
+    await new Promise(res=>{if(video)video.onloadedmetadata=()=>{video.play();res();};else res();});
+    for(let i=0;i<30;i++){if(video&&video.videoWidth>0)break;await wait(100);}
+    const cb=document.getElementById('findMemoryCamBtn');if(cb)cb.style.display='none';
+    const st=document.getElementById('findMemoryCamStopBtn');if(st)st.style.display='block';
+    speak('Camera ready. Now click Find in Memory.');
+  }catch(e){toast('Cannot access camera','error');}
+}
+
+function stopFindMemoryCam(silent=false){
+  if(findMemoryStream){findMemoryStream.getTracks().forEach(t=>t.stop());findMemoryStream=null;}
+  const video=document.getElementById('findMemoryVideo');if(video)video.style.display='none';
+  const ph=document.getElementById('findMemoryPlaceholder');if(ph)ph.style.display='flex';
+  const cb=document.getElementById('findMemoryCamBtn');if(cb)cb.style.display='block';
+  const st=document.getElementById('findMemoryCamStopBtn');if(st)st.style.display='none';
+}
+
+async function findFromMemory(){
+  const qi=document.getElementById('findMemoryQuery');const query=qi?qi.value.trim():'';
+  if(!query){speak('Please enter what you are looking for.');toast('Please enter a search query','warn');return;}
+  const result=document.getElementById('findMemoryResult');
+  if(result){result.className='result show';result.innerHTML='<div class="loader"></div><p>Searching memory…</p>';}
+  const frames=[];
+  if(findMemoryStream){
+    const video=document.getElementById('findMemoryVideo');const canvas=document.createElement('canvas');
+    canvas.width=video.videoWidth||640;canvas.height=video.videoHeight||480;
+    for(let i=0;i<3;i++){canvas.getContext('2d').drawImage(video,0,0);frames.push(canvas.toDataURL('image/jpeg',0.85).split(',')[1]);if(i<2)await wait(400);}
+  }
+  try{
+    const r=await fetch('/api/memory/find',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query,frames})});
+    const d=await r.json();const msg=d.message||d.voice_response||'No result';
+    if(d.success){
+      const icon=d.found_in_memory?'🧠':'📷';const label=d.found_in_memory?'From Memory':'Visual Search';
+      if(result)result.innerHTML=`<i class="fas fa-check-circle" style="color:var(--accent)"></i> <strong>${icon} ${label}:</strong><br>${esc(msg)}`;
+      speak(msg,true);if(d.found_in_memory&&d.location)toast(`Found! Check: ${d.location}`,'success');
+    }else{
+      if(result)result.innerHTML=`<i class="fas fa-search" style="color:var(--muted)"></i> ${esc(msg)}`;
+      speak(msg,true);
+    }
+  }catch(e){if(result)result.innerHTML='<i class="fas fa-exclamation-triangle"></i> Network error';speak('Network error while searching memory.');}
+}
+
+async function loadMemoryList(){
+  const container=document.getElementById('memoriesList');if(!container)return;
+  container.innerHTML='<div class="memory-empty"><div class="loader"></div><p>Loading…</p></div>';
+  try{
+    const r=await fetch('/api/memory/list');const d=await r.json();
+    const badge=document.getElementById('memoryCountBadge');
+    if(d.success){
+      const count=d.count||0;if(badge)badge.textContent=`${count} saved`;
+      if(count===0){
+        container.innerHTML='<div class="memory-empty"><i class="fas fa-brain" style="font-size:2rem;opacity:.3;display:block;margin-bottom:8px"></i><p>No memories saved yet.</p><p style="margin-top:6px;font-size:.78rem">Say "My Eye remember this" to save an object.</p></div>';
+      }else{
+        container.innerHTML=d.memories.map(mem=>`
+          <div class="memory-item" id="mem_${esc(mem.id)}">
+            <div class="memory-item-info">
+              <div class="memory-item-name">${mem.color?`<span style="color:var(--accent2)">${esc(mem.color)}</span> `:''}${esc(mem.name)}</div>
+              <div class="memory-item-loc"><i class="fas fa-map-marker-alt" style="color:var(--accent3)"></i> ${esc(mem.location)}</div>
+              <div class="memory-item-meta">${mem.photos} photo${mem.photos!==1?'s':''} · Found ${mem.times_found} time${mem.times_found!==1?'s':''} · ${esc(mem.timestamp)}</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px;margin-left:10px">
+              <button class="btn btn-accent btn-sm" onclick="quickFindMemory('${esc(mem.name)}')"><i class="fas fa-search"></i> Find</button>
+              <button class="btn btn-danger btn-sm" onclick="deleteMemory('${esc(mem.id)}','${esc(mem.name)}')"><i class="fas fa-trash"></i></button>
+            </div>
+          </div>`).join('');
+      }
+    }else{container.innerHTML='<div class="memory-empty">Error loading memories</div>';}
+  }catch(e){if(container)container.innerHTML='<div class="memory-empty">Error loading memories</div>';}
+}
+
+function quickFindMemory(name){
+  const qi=document.getElementById('findMemoryQuery');if(qi)qi.value=name;
+  switchTab(3);findFromMemory();
+}
+
+async function deleteMemory(id,name){
+  if(!confirm(`Delete memory for "${name}"?`))return;
+  try{
+    const r=await fetch('/api/memory/delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})});
+    const d=await r.json();
+    if(d.success){toast(d.message||d.voice_response||'Deleted','success');speak(d.message||d.voice_response||'');loadMemoryList();}
+    else toast('Delete failed','error');
+  }catch(e){toast('Network error','error');}
+}
+
+// ════════════════════════════════════════════════════════════════
+// ASSISTANT MODE
+// ════════════════════════════════════════════════════════════════
+async function startAssistantMode(){
+  const panel=document.getElementById('assistantPanel');const statusEl=document.getElementById('assistantStatus');const responseEl=document.getElementById('assistantResponse');
+  if(panel)panel.classList.add('show');if(responseEl)responseEl.classList.remove('show');
+  try{
+    const r=await fetch('/api/assistant/start',{method:'POST'});const d=await r.json();
+    assistantActive=true;
+    if(statusEl)statusEl.textContent=d.message||'What are you finding, dear?';
+    speak(d.message||'Hello! I am ready to help you. What would you like?',true);
+  }catch(e){if(statusEl)statusEl.textContent='Assistant ready. What are you finding?';speak('Hello! What are you finding?',true);}
+  await waitForSpeechEnd();await wait(300);
+  if(statusEl)statusEl.textContent='Listening…';
+  const query=await listenForSinglePhrase();
+  if(!query){if(statusEl)statusEl.textContent='Did not hear you. Please try again.';speak('I did not hear you. Please tap Close and try again.');return;}
+  if(statusEl)statusEl.textContent=`Searching for: ${query}…`;speak(`Let me check for ${query}.`);
+  const frames=[];
+  if(findMemoryStream){
+    const video=document.getElementById('findMemoryVideo');const canvas=document.createElement('canvas');
+    canvas.width=video.videoWidth||640;canvas.height=video.videoHeight||480;
+    for(let i=0;i<3;i++){canvas.getContext('2d').drawImage(video,0,0);frames.push(canvas.toDataURL('image/jpeg',0.85).split(',')[1]);if(i<2)await wait(400);}
+  }
+  try{
+    const r=await fetch('/api/assistant/query',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query,frames})});
+    const d=await r.json();const msg=d.message||d.voice_response||'No result';
+    if(responseEl){responseEl.textContent=msg;responseEl.classList.add('show');}
+    if(statusEl)statusEl.textContent=d.action_taken==='memory_find'?'🧠 Memory Result':'💡 Result';
+    speak(msg,true);
+  }catch(e){if(statusEl)statusEl.textContent='Error. Please try again.';speak('Network error. Please try again.');}
+}
+
+function closeAssistantPanel(){
+  const panel=document.getElementById('assistantPanel');if(panel)panel.classList.remove('show');
+  assistantActive=false;fetch('/api/assistant/stop',{method:'POST'}).catch(()=>{});
+}
+
+function listenForSinglePhrase(){
+  return new Promise(resolve=>{
+    if(!('webkitSpeechRecognition'in window||'SpeechRecognition'in window)){resolve('');return;}
+    const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+    const r=new SR();r.lang='en-IN';r.continuous=false;r.interimResults=false;
+    let done=false;
+    r.onresult=(e)=>{if(done)return;done=true;resolve(e.results[0][0].transcript.trim());};
+    r.onerror=()=>{if(!done){done=true;resolve('');}};
+    r.onend=()=>{if(!done){done=true;resolve('');}};
+    r.start();setTimeout(()=>{if(!done){done=true;try{r.stop();}catch(e){}resolve('');}},8000);
+  });
+}
+
+// ════════════════════════════════════════════════════════════════
+// SONAR & CLOCK
+// ════════════════════════════════════════════════════════════════
+async function updateSensor(){
+  try{
+    const r=await fetch('/api/sonar-data');const d=await r.json();
+    if(d.connected){
+      const dist=parseFloat(d.distance)||0;
+      const dv=document.getElementById('distVal');if(dv)dv.textContent=dist.toFixed(1);
+      const sv=document.getElementById('stepsVal');if(sv)sv.textContent=d.steps||0;
+      const sd=document.getElementById('sonarDist');if(sd)sd.textContent=dist.toFixed(1);
+      const sb=document.getElementById('sonarBar');if(sb)sb.style.width=Math.min((dist/400)*100,100)+'%';
+      const sbg=document.getElementById('sonarBadge');if(sbg){sbg.textContent='✅ Connected';sbg.className='badge ok';}
+    }else{
+      const sbg=document.getElementById('sonarBadge');if(sbg){sbg.textContent='❌ Disconnected';sbg.className='badge warn';}
+    }
+  }catch(e){}
+}
+function updateTime(){const el=document.getElementById('currentTime');if(el)el.textContent=new Date().toLocaleTimeString();}
+
+// ════════════════════════════════════════════════════════════════
+// SOS
+// ════════════════════════════════════════════════════════════════
+async function triggerSOS(){
+  if(!currentPosition){alert('Cannot get GPS location for SOS');return;}
+  try{
+    const r=await fetch('/api/sos/trigger',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:`${currentPosition[0]},${currentPosition[1]}`,lat:currentPosition[0],lon:currentPosition[1]})});
+    const d=await r.json();
+    if(d.status==='success'){
+      const sb=document.getElementById('sosBadge');if(sb){sb.textContent='🔴 ACTIVE';sb.className='badge warn';}
+      const cb=document.getElementById('cancelSOSBtn');if(cb)cb.disabled=false;
+      speak(d.voice_response||d.message||'SOS activated',true);toast('SOS ACTIVATED!','error');
+    }
+  }catch(e){toast('SOS error','error');}
+}
+
+async function cancelSOS(){
+  try{
+    const r=await fetch('/api/sos/cancel',{method:'POST'});const d=await r.json();
+    if(d.status==='success'){
+      const sb=document.getElementById('sosBadge');if(sb){sb.textContent='🟢 Ready';sb.className='badge ok';}
+      const cb=document.getElementById('cancelSOSBtn');if(cb)cb.disabled=true;
+      toast('SOS cancelled','success');
+    }
+  }catch(e){}
+}
+
+// ════════════════════════════════════════════════════════════════
+// VOICE RECOGNITION — single instance, routes to agent when active
+// ════════════════════════════════════════════════════════════════
+function initVoiceRec(){
+  if(!('webkitSpeechRecognition'in window||'SpeechRecognition'in window))return false;
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  recognition=new SR();recognition.lang='en-IN';recognition.continuous=false;recognition.interimResults=false;
+
+  recognition.onstart=()=>{
+    isListening=true;
+    const ind=document.getElementById('listenInd');if(ind)ind.classList.add('active');
+    const st=document.getElementById('voiceStatusTxt');if(st)st.textContent='Listening…';
+  };
+
+  recognition.onresult=async(e)=>{
+    const cmd=e.results[0][0].transcript;
+    const vt=document.getElementById('voiceTranscript');
+    if(vt)vt.innerHTML=`🎤 You said: "<strong>${esc(cmd)}</strong>"`;
+
+    // Route to agent if waiting
+    if(agentActive&&agentWaitingForUser&&agentCurrentQuestionId){
+      _clearAgentListenTimeout();
+      agentStopMicIndicator();
+      agentWaitingForUser=false; // clear before async
+      await agentSendUserVoiceResponse(cmd);
+      return;
+    }
+    // Check agent interrupts
+    if(agentActive){
+      const handled=await checkAgentInterrupt(cmd);
+      if(handled)return;
+    }
+    await processVoiceCommand(cmd,false);
+  };
+
+  recognition.onerror=()=>stopListeningVoice();
+  recognition.onend=()=>stopListeningVoice();
+  return true;
+}
+
+function startListeningVoice(){
+  if(!recognition&&!initVoiceRec())return;
+  if(isListening)return;
+  try{recognition.start();}catch(e){}
+}
+
+function stopListeningVoice(){
+  if(recognition)try{recognition.stop();}catch(e){}
+  isListening=false;
+  const ind=document.getElementById('listenInd');if(ind)ind.classList.remove('active');
+  const st=document.getElementById('voiceStatusTxt');if(st)st.textContent='Idle';
+}
+
+// ════════════════════════════════════════════════════════════════
+// WAKE WORD
+// ════════════════════════════════════════════════════════════════
+function initWakeRec(){
+  if(!('webkitSpeechRecognition'in window||'SpeechRecognition'in window))return false;
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  wakeRec=new SR();wakeRec.lang='en-IN';wakeRec.continuous=true;wakeRec.interimResults=false;
+
+  wakeRec.onstart=()=>{
+    const ws=document.getElementById('wakeStatus');if(ws)ws.innerHTML='👂 Always listening for "My Eye"…';
+    const wo=document.getElementById('wakeOrb');if(wo)wo.classList.add('listening');
+  };
+
+  wakeRec.onresult=async(e)=>{
+    for(let i=e.resultIndex;i<e.results.length;i++){
+      const text=e.results[i][0].transcript.toLowerCase().trim();
+      if(text.includes('my eye')||text.includes('my i')||text.includes('my ai')||text.includes('vision assist')){
+        const ws=document.getElementById('wakeStatus');if(ws)ws.innerHTML=`⏳ Processing: "${esc(text)}"`;
+        const wo=document.getElementById('wakeOrb');if(wo)wo.classList.remove('listening');
+
+        if(agentActive&&agentWaitingForUser&&agentCurrentQuestionId){
+          _clearAgentListenTimeout();agentStopMicIndicator();agentWaitingForUser=false;
+          await agentSendUserVoiceResponse(text);
+          if(ws)ws.innerHTML='👂 Always listening for "My Eye"…';if(wo)wo.classList.add('listening');break;
+        }
+        if(agentActive){
+          const handled=await checkAgentInterrupt(text);
+          if(handled){if(ws)ws.innerHTML='👂 Always listening for "My Eye"…';if(wo)wo.classList.add('listening');break;}
+        }
+        await handleWakeWordCommand(text);
+        if(ws)ws.innerHTML='👂 Always listening for "My Eye"…';if(wo)wo.classList.add('listening');break;
+      }
+    }
+  };
+
+  wakeRec.onerror=(e)=>{if(e.error!=='no-speech'&&e.error!=='aborted'){setTimeout(()=>{try{wakeRec.start();}catch(err){}},1000);}};
+  wakeRec.onend=()=>{if(document.getElementById('tab2')&&document.getElementById('tab2').classList.contains('active')){setTimeout(()=>{try{wakeRec.start();}catch(e){}},300);}};
+  return true;
+}
+
+function startWakeWord(){if(!wakeRec&&!initWakeRec())return;try{wakeRec.start();}catch(e){}}
+function triggerWakeOrb(){startWakeWord();speak("I'm always listening. Say My Eye followed by your command.");}
+
+async function handleWakeWordCommand(text){
+  let clean=text.replace(/my eye[,\s]*/gi,'').replace(/my i[,\s]*/gi,'').replace(/my ai[,\s]*/gi,'').replace(/vision assist[,\s]*/gi,'').trim();
+  if(/stop voice|stop speaking|silence|mute/.test(clean)){stopVoiceOutput();return;}
+  if(/resume voice|start speaking|unmute/.test(clean)){resumeVoiceOutput();return;}
+  if(/stop all|stop everything|global stop/.test(clean)){await globalStop();return;}
+  await processVoiceCommand(clean,true);
+}
+
+async function checkAgentInterrupt(spokenText){
+  if(!agentActive||!agentSessionId)return false;
+  try{
+    const r=await fetch('/api/agent/interrupt',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:spokenText,session_id:agentSessionId})});
+    const d=await r.json();
+    if(d.handled){
+      if(d.voice_response)speak(d.voice_response,true);
+      if(d.action==='stop'||d.agent_stop){
+        _clearAgentListenTimeout();agentStopMicIndicator();
+        agentActive=false;agentWaitingForUser=false;agentSessionId='';agentCurrentQuestionId='';
+        recognitionPausedForAgent=false;
+        document.body.classList.remove('agent-mode-active');
+        hideAgentDashboard();setModeIndicator('System Ready');toast('Agent stopped','warn');
+      }
+      return true;
+    }
+  }catch(e){}
+  return false;
+}
+
+// ════════════════════════════════════════════════════════════════
+// COMMAND PROCESSOR
+// ════════════════════════════════════════════════════════════════
+
+// ════════════════════════════════════════════════════════════════
+// ONLY ONE CHANGE NEEDED
+//
+// Find:   async function processVoiceCommand(command, isAcc = false){
+// Select the ENTIRE function to its closing }
+// Replace with everything below
+// ════════════════════════════════════════════════════════════════
+
+// ════════════════════════════════════════════════════════════════
+// ONLY ONE CHANGE NEEDED
+//
+// Find:   async function processVoiceCommand(command, isAcc = false){
+// Select the ENTIRE function to its closing }
+// Replace with everything below
+// ════════════════════════════════════════════════════════════════
+
+async function processVoiceCommand(command, isAcc = false) {
+  if (!command || !command.trim()) return;
+  const cmdLower = command.toLowerCase().trim();
+
+  if (/stop voice|stop speaking/.test(cmdLower)) { stopVoiceOutput(); return; }
+  if (/resume voice|start speaking/.test(cmdLower)) { resumeVoiceOutput(); return; }
+  if (/stop all|sab band|stop everything/.test(cmdLower)) { await globalStop(); return; }
+
+  // ── STEP 1: strip ONLY the wake word, keep everything else ──
+  let cleanedCommand = command
+    .replace(/my eye[,\s]*/gi, '')
+    .replace(/my i[,\s]*/gi, '')
+    .replace(/my ai[,\s]*/gi, '')
+    .replace(/vision assist[,\s]*/gi, '')
+    .trim();
+
+  // ── STEP 2: check if what remains starts with an agent trigger phrase ──
+  const agentTriggerPhrases = [
+    'help me find', 'help me go', 'help me check',
+    'help me read', 'help me identify', 'help me',
+    'can you help me', 'i need help',
+    'mujhe help karo', 'mujhe madad karo',
+    'find my', 'find',
+    'locate my', 'locate',
+    'where is my', 'where is'
+  ];
+
+  const isAgentTrigger = agentTriggerPhrases.some(p =>
+    cleanedCommand.toLowerCase().startsWith(p)
+  );
+
+  if (isAgentTrigger) {
+    // ── STEP 3: pass the FULL cleaned command (after wake word removal) into the box ──
+    // Example: "My Eye find my laptop" → cleanedCommand = "find my laptop"
+    // That is exactly what you would type manually, so the agent works identically
+    const goalInput = document.getElementById('agentGoalInput');
+    const startBtn  = document.getElementById('agentStartBtn');
+
+    if (goalInput) goalInput.value = cleanedCommand;  // e.g. "find my laptop"
+    if (startBtn)  startBtn.click();                  // same as clicking Run Agent
+
+    return;
+  }
+
+  // ── everything below is your original code, unchanged ──
+  let msg = '';
+  try {
+    const r = await fetch('/api/process-command', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ command })
+    });
+    const d = await r.json();
+    msg = d.voice_response || d.message || '';
+    const action = d.action || d.category || '';
+
+    if (d.hard_stop || action === 'global_stop') { await globalStop(); return; }
+
+    if (action === 'agent_start' && d.goal) {
+      const goalInput = document.getElementById('agentGoalInput');
+      const startBtn  = document.getElementById('agentStartBtn');
+      if (goalInput) goalInput.value = d.goal;
+      if (startBtn)  startBtn.click();
+      return;
+    }
+    if (d.agent_trigger && d.goal) {
+      const goalInput = document.getElementById('agentGoalInput');
+      const startBtn  = document.getElementById('agentStartBtn');
+      if (goalInput) goalInput.value = d.goal;
+      if (startBtn)  startBtn.click();
+      return;
+    }
+
+    if (action === 'start_camera') { await startCamera(); }
+    else if (action === 'stop_camera') { stopCamera(); }
+    else if (action === 'navigate' && d.destination) {
+      const inp = document.getElementById('endLocation');
+      if (inp) inp.value = d.destination;
+      setTimeout(findRoute, 400);
+    }
+    else if (action === 'indoor_navigate' && d.destination) { await indoorNavigateToRoom(d.destination); }
+    else if (action === 'start_food' || action === 'start_food_live') {
+      if (!myStreams['food']) await startMyEyeCam('food');
+      if (action === 'start_food_live') { setMyEyeMode('food', 'live'); startMyEyeLive('food'); }
+      else { setMyEyeMode('food', 'normal'); runMyEyeNormal('food'); }
+    }
+    else if (action === 'start_stairs' || action === 'start_stairs_live') {
+      if (!myStreams['stair']) await startMyEyeCam('stair');
+      if (action === 'start_stairs_live') { setMyEyeMode('stair', 'live'); startMyEyeLive('stair'); }
+      else { setMyEyeMode('stair', 'normal'); runMyEyeNormal('stair'); }
+    }
+    else if (action === 'start_traffic' || action === 'start_traffic_live') {
+      if (!myStreams['traffic']) await startMyEyeCam('traffic');
+      if (action === 'start_traffic_live') { setMyEyeMode('traffic', 'live'); startMyEyeLive('traffic'); }
+      else { setMyEyeMode('traffic', 'normal'); runMyEyeNormal('traffic'); }
+    }
+    else if (action === 'start_whatsfront' || action === 'describe_scene') {
+      if (!myStreams['wif']) await startMyEyeCam('wif');
+      setMyEyeMode('wif', 'normal'); runMyEyeNormal('wif');
+    }
+    else if (action === 'start_object_finder') {
+      const q = d.query || d.interpreted?.extracted_query || '';
+      if (q) { const qi = document.getElementById('findObjectQuery'); if (qi) qi.value = q; }
+      if (!myStreams['finder']) await startMyEyeCam('finder');
+      speak(msg || `Scanning for ${q || 'object'}. Please slowly turn around.`, true);
+      setMyEyeMode('finder', 'normal'); startFinderScan(); return;
+    }
+    else if (action === 'memory_find_then_scan') {
+      if (d.memory_location) toast(`Check: ${d.memory_location}`, 'success');
+    }
+    else if (action === 'start_memory_remember' || action === 'memory_remember') {
+      if (d.extracted_description) {
+        const mdEl = document.getElementById('memoryDescription');
+        if (mdEl) mdEl.value = d.extracted_description;
+        if (!memoryStream) {
+          speak(d.voice_response || 'Saving to memory. Starting camera now.', true);
+          await startMemoryCam(); await wait(1500);
+        }
+        await saveMemoryObject();
+      } else { await handleMemoryRemember(); }
+      return;
+    }
+    else if (action === 'start_assistant' || action === 'assistant_mode' || action === 'assistant_query') {
+      await startAssistantMode(); return;
+    }
+    else if (action === 'start_rag_scanner') { startRagAutoCapture(); }
+    else if (action === 'start_page_reader') { startReadAutoCapture(); }
+    else if (action === 'stop_rag_scanner') { stopRagAutoCapture(); }
+    else if (action === 'stop_page_reader') { stopReadAutoCapture(); }
+    else if (action === 'start_face_capture') { startCaptureFlow(); }
+    else if (action === 'recognize_face') { setDetMode('face'); }
+    else if (action === 'detect_money') { setDetMode('money'); }
+    else if (action === 'trigger_sos') { triggerSOS(); }
+    else if (action === 'get_location') {
+      msg = currentPosition
+        ? `At ${currentPosition[0].toFixed(4)}, ${currentPosition[1].toFixed(4)}`
+        : 'Location unknown';
+    }
+    else if (action === 'stop_voice') { stopVoiceOutput(); return; }
+    else if (action === 'resume_voice') { resumeVoiceOutput(); return; }
+    else if (action === 'mode_conflict') { showModeBanner(msg); }
+
+    if (isAcc) { const el = document.getElementById('accResponse'); if (el) { el.style.display = 'block'; el.textContent = msg; } }
+    else { const el = document.getElementById('voiceResponse'); if (el) { el.style.display = 'block'; el.textContent = msg; } }
+    if (msg) speak(msg);
+
+  } catch (e) {
+    const errMsg = 'Sorry, I had trouble processing that command.';
+    if (isAcc) { const el = document.getElementById('accResponse'); if (el) el.textContent = errMsg; }
+    else { const el = document.getElementById('voiceResponse'); if (el) el.textContent = errMsg; }
+    speak(errMsg);
+  }
+}
+
+
+async function handleMemoryRemember(){
+  speak('Please describe the object and where you keep it. For example: red keys on the kitchen table.',true);
+  await waitForSpeechEnd();await wait(300);
+  const description=await listenForSinglePhrase();
+  if(!description){speak('I did not hear a description. Please try again.');return;}
+  speak(`Got it. Now taking 2 photos. Please hold the object steady.`,true);await waitForSpeechEnd();
+  if(!memoryStream){await startMemoryCam();await wait(1500);}
+  if(!memoryStream){speak('Camera not available. Please start the memory camera manually.');return;}
+  const di=document.getElementById('memoryDescription');if(di)di.value=description;
+  await saveMemoryObject();
+}
+
+async function pollActiveMode(){
+  try{
+    const r=await fetch('/api/mode/status');const d=await r.json();
+    const mode=d.active_mode||'idle';const label=d.active_label||mode;
+    if(!agentActive)setModeIndicator(mode==='idle'?'System Ready':`Active: ${label}`);
+    if(d.assistant_active!==undefined)assistantActive=d.assistant_active;
+  }catch(e){}
+}
+
+// ════════════════════════════════════════════════════════════════
+// waitForMeaningfulResult — polls DOM, strips loader text
+// ════════════════════════════════════════════════════════════════
+function waitForMeaningfulResult(elementId,minLength=20,timeoutMs=30000){
+  return new Promise((resolve,reject)=>{
+    const start=Date.now();
+    const interval=setInterval(()=>{
+      const el=document.getElementById(elementId);
+      if(el){
+        let text=(el.textContent||el.innerText||'').trim();
+        // Strip ONLY leading loader text
+        text=text.replace(/^(Capturing\.\.\.?|Analyzing\.\.\.?|Loading\.\.\.?|Searching memory…|Capturing…|Analyzing…|Thinking\.\.\.?|Scanning\.\.\.?)\s*/i,'').trim();
+        // Reject generic/error placeholders
+        const isGeneric=/^(No objects detected|No result|Network error|Could not process|I cannot see|Not visible|Click Start|Camera off|Analysis failed)$/i.test(text);
+        if(text.length>=minLength&&!isGeneric){clearInterval(interval);resolve(text);return;}
+      }
+      if(Date.now()-start>timeoutMs){clearInterval(interval);reject(new Error(`Timeout for #${elementId}`));}
+    },500);
+  });
+}
+
+// ════════════════════════════════════════════════════════════════
+// AGENT — HELPERS
+// ════════════════════════════════════════════════════════════════
+function _clearAgentListenTimeout(){if(agentListenTimeout){clearTimeout(agentListenTimeout);agentListenTimeout=null;}}
+
+function agentShowMicIndicator(){
+  const mi=document.getElementById('agentMicIndicator');if(mi)mi.classList.add('show');
+  const ms=document.getElementById('agentMicStatus');if(ms)ms.textContent='Listening for your voice…';
+}
+
+function agentStopMicIndicator(){const mi=document.getElementById('agentMicIndicator');if(mi)mi.classList.remove('show');}
+
+function agentSetStatus(status,text){
+  const pt=document.getElementById('agentStatusPillText');if(pt)pt.textContent=status;
+  const badge=document.getElementById('agentStatusBadge');
+  if(badge){const c={Running:'info',Listening:'ok',Thinking:'warn',Done:'ok',Error:'danger'};badge.className=`badge ${c[status]||'info'}`;badge.textContent=status;}
+  const sub=document.getElementById('agentDashSubtitle');if(sub&&text)sub.textContent=text;
+  const pl=document.getElementById('agentProgressLabel');if(pl&&text)pl.textContent=text;
+}
+
+// ════════════════════════════════════════════════════════════════
+// AGENT — startAgentVoiceListening
+// Does NOT create a new SpeechRecognition — reuses main recognition
+// ════════════════════════════════════════════════════════════════
+function startAgentVoiceListening(questionId){
+  agentShowMicIndicator();
+  const sub=document.getElementById('agentDashSubtitle');if(sub)sub.textContent='🎤 Listening — speak your answer now';
+  if(recognition&&isListening)return; // already running
+  startListeningVoice();
+}
+
+// Does NOT stop main recognition — only hides indicator and clears flags
+function stopAgentVoiceListening(){
+  _clearAgentListenTimeout();agentStopMicIndicator();
+  // Do NOT stop main recognition
+}
+
+// ════════════════════════════════════════════════════════════════
+// AGENT — agentStartListeningForUser
+// 20s first timeout, 15s second, then auto-continue
+// ════════════════════════════════════════════════════════════════
+function agentStartListeningForUser(questionId){
+  if(!agentWaitingForUser)return;
+  agentListenRetries=0;
+  agentShowMicIndicator();agentSetStatus('Listening','Waiting for your answer…');
+  playBeep(800,150);
+  _clearAgentListenTimeout();
+  agentListenTimeout=setTimeout(()=>{
+    if(!agentWaitingForUser)return;
+    agentListenRetries++;
+    if(agentListenRetries<=AGENT_MAX_RETRIES){
+      speak('I did not hear you. Please say your answer now.',true);
+      agentListenTimeout=setTimeout(()=>{if(agentWaitingForUser)_agentNoResponseFallback();},AGENT_SECOND_TIMEOUT);
+    }else{_agentNoResponseFallback();}
+  },AGENT_FIRST_TIMEOUT);
+  if(!isListening)startListeningVoice();
+}
+
+async function _agentNoResponseFallback(){
+  if(!agentWaitingForUser)return;
+  _clearAgentListenTimeout();agentStopMicIndicator();agentHideUserWait();agentListenRetries=0;
+  playBeep(400,200);
+  agentSetStatus('Thinking','No response — auto-continuing…');
+  agentAddLog('⚠ No voice response — auto-continuing','warn');
+  if(!agentActive||!agentSessionId||!agentCurrentQuestionId)return;
+  const qid=agentCurrentQuestionId;agentCurrentQuestionId='';agentWaitingForUser=false;
+  try{
+    const r=await fetch('/api/agent/respond',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:agentSessionId,question_id:qid,response:'',no_response:true})});
+    const d=await r.json();agentIteration++;await handleAgentResponse(d,agentIteration);
+  }catch(err){
+    agentAddLog('❌ No-response fallback error: '+err.message,'error');
+    agentActive=false;agentSessionId='';document.body.classList.remove('agent-mode-active');
+    setTimeout(()=>hideAgentDashboard(),2000);
+  }
+}
+
+// ════════════════════════════════════════════════════════════════
+// AGENT — LOG & DASHBOARD UI
+// ════════════════════════════════════════════════════════════════
+function agentAddLog(msg,type='info'){
+  const el=document.getElementById('agentLogList');if(!el)return;
+  const colors={info:'var(--muted)',success:'var(--green)',warn:'var(--gold)',error:'var(--accent3)',step:'var(--accent2)'};
+  const row=document.createElement('div');row.className='agent-log-line';
+  row.style.color=colors[type]||colors.info;row.textContent=`[${new Date().toLocaleTimeString()}] ${msg}`;
+  el.appendChild(row);el.scrollTop=el.scrollHeight;
+  const card=document.getElementById('agentLogCard');if(card)card.style.display='block';
+}
+
+function clearAgentLog(){
+  const el=document.getElementById('agentLogList');if(el)el.innerHTML='';
+  const card=document.getElementById('agentLogCard');if(card)card.style.display='none';
+}
+
+function showAgentDashboard(){
+  const d=document.getElementById('agentDashboard');if(d)d.classList.add('visible');
+  const o=document.getElementById('agentOverlay');if(o)o.classList.add('active');
+}
+
+function hideAgentDashboard(){
+  const d=document.getElementById('agentDashboard');if(d)d.classList.remove('visible');
+  const o=document.getElementById('agentOverlay');if(o)o.classList.remove('active');
+  const cs=document.getElementById('agentCurrentStrip');if(cs)cs.classList.remove('show');
+  const uw=document.getElementById('agentUserWait');if(uw)uw.classList.remove('show');
+  agentStopMicIndicator();
+}
+
+function agentSetCurrentAction(text){
+  const strip=document.getElementById('agentCurrentStrip');if(strip)strip.classList.add('show');
+  const el=document.getElementById('agentCurrentTextContent');if(el)el.textContent=text;
+}
+
+function agentShowUserWait(question,expectedResponse='free_text'){
+  agentWaitingForUser=true;
+  const uw=document.getElementById('agentUserWait');if(uw)uw.classList.add('show');
+  const qt=document.getElementById('agentUserWaitQuestion');if(qt)qt.textContent=question;
+  const cmds=document.getElementById('agentWaitCmds');
+  if(cmds){
+    if(expectedResponse==='yes_no'){
+      cmds.innerHTML=`<span class="agent-wait-cmd" onclick="agentSendQuickResponse('yes')">✅ Yes</span><span class="agent-wait-cmd" onclick="agentSendQuickResponse('no')">❌ No</span><span class="agent-wait-cmd" onclick="cancelAgentTask()">✗ Cancel</span>`;
+    }else{
+      cmds.innerHTML=`<span class="agent-wait-cmd" onclick="agentSendQuickResponse('found it')">✓ Found It</span><span class="agent-wait-cmd" onclick="agentSendQuickResponse('done')">✓ Done</span><span class="agent-wait-cmd" onclick="agentSendQuickResponse('skip')">⏭ Skip</span><span class="agent-wait-cmd" onclick="cancelAgentTask()">✗ Cancel</span>`;
+    }
+  }
+}
+
+function agentHideUserWait(){
+  agentWaitingForUser=false;agentCurrentQuestionId='';agentCurrentQuestion='';
+  _clearAgentListenTimeout();agentStopMicIndicator();
+  const uw=document.getElementById('agentUserWait');if(uw)uw.classList.remove('show');
+}
+
+function agentFlashComplete(){
+  const el=document.getElementById('agentCompleteFlash');
+  if(el){el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2500);}
+}
+
+function agentUpdateProgress(n){
+  agentIteration=n;
+  const pb=document.getElementById('agentProgressBar');const pct=Math.min(5+n*12,95);if(pb)pb.style.width=pct+'%';
+  const sc=document.getElementById('agentStepsCounter');if(sc)sc.textContent=`Iteration ${n}`;
+  const pc=document.getElementById('agentProgressCount');if(pc)pc.textContent=`Step ${n}`;
+}
+
+function agentAddStepCard(stepNum,toolName,purpose,status){
+  const container=document.getElementById('agentStepsList');if(!container)return;
+  if(stepNum===1)container.innerHTML='';
+  const icons={search_memory:'🧠',start_scene:'👁️',start_finder:'🔍',start_food:'🍽️',start_traffic:'🚦',start_stairs:'🪜',start_reader:'📖',start_camera:'📷',ask_user:'💬',complete:'✅',speak_then_continue:'💬',default:'⚙️'};
+  const icon=icons[toolName]||icons.default;
+  const cls={active:'step-active',done:'step-done',pending:''}[status]||'';
+  const [bc,bt]={active:'badge-running Running',done:'badge-done Done',pending:'badge-pending Waiting'}[status]?.split(' ')||['badge-pending','Waiting'];
+  const div=document.createElement('div');div.className='agent-step '+cls;div.id='agent-step-'+stepNum;
+  div.innerHTML=`<div class="agent-step-icon">${icon}</div><div class="agent-step-body"><div class="agent-step-num">Step ${stepNum}</div><div class="agent-step-purpose">${esc(purpose)}</div><span class="agent-step-tool-chip">${esc(toolName)}</span></div><span class="agent-step-status-badge ${bc}">${bt}</span>`;
+  container.appendChild(div);div.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+function agentMarkStepDone(stepNum){
+  const el=document.getElementById('agent-step-'+stepNum);if(!el)return;
+  el.className='agent-step step-done';
+  const badge=el.querySelector('.agent-step-status-badge');if(badge){badge.className='agent-step-status-badge badge-done';badge.textContent='Done';}
+}
+
+// ════════════════════════════════════════════════════════════════
+// AGENT — handleAgentResponse (MAIN dispatcher)
+// ════════════════════════════════════════════════════════════════
+async function handleAgentResponse(data,stepNum){
+  agentSetStatus('Thinking','LLM is planning next step…');
+  if(!data||!data.success){
+    const errMsg=data?.voice_response||'Agent encountered an error. Please try again.';
+    speak(errMsg,true);agentAddLog('❌ Agent error: '+errMsg,'error');agentSetStatus('Error','Error');
+    agentActive=false;agentWaitingForUser=false;agentSessionId='';agentCurrentQuestionId='';
+    agentStopMicIndicator();document.body.classList.remove('agent-mode-active');
+    setTimeout(()=>hideAgentDashboard(),2000);return;
+  }
+  const action=data.action;
+  agentUpdateProgress(stepNum||agentIteration);
+  agentAddLog(`← action="${action}" step=${stepNum}`,'info');
+
+  // ── COMPLETE ──
+  if(action==='complete'){
+    const msg=data.voice_response||`Task complete: ${agentGoal}.`;
+    agentAddLog('🎉 COMPLETE: '+msg.substring(0,80),'success');
+    agentMarkStepDone(agentIteration);agentFlashComplete();
+    speak(msg,true);toast('Agent task complete!','success');
+    const pb=document.getElementById('agentProgressBar');if(pb)pb.style.width='100%';
+    agentSetStatus('Done','Task completed ✓');
+    agentActive=false;agentWaitingForUser=false;agentSessionId='';agentCurrentQuestionId='';
+    agentStopMicIndicator();recognitionPausedForAgent=false;
+    document.body.classList.remove('agent-mode-active');
+    setModeIndicator('System Ready');agentHideUserWait();
+    const cs=document.getElementById('agentCurrentStrip');if(cs)cs.classList.remove('show');
+    setTimeout(()=>{if(!agentActive)hideAgentDashboard();},5000);return;
+  }
+
+  // ── STOP ──
+  if(action==='stop'){
+    const msg=data.voice_response||'Agent stopped.';speak(msg,true);agentAddLog('🛑 Stopped: '+msg,'warn');
+    agentActive=false;agentWaitingForUser=false;agentSessionId='';agentCurrentQuestionId='';
+    agentStopMicIndicator();recognitionPausedForAgent=false;
+    document.body.classList.remove('agent-mode-active');setModeIndicator('System Ready');
+    setTimeout(()=>hideAgentDashboard(),2000);return;
+  }
+
+  // ── SPEAK_THEN_CONTINUE ──
+  // Backend checked memory, auto-continues to camera without user wait
+  if(action==='speak_then_continue'){
+    const msg=data.voice_response||'';
+    const backendResult=data.backend_result||'';
+    const stepName=data.step_name||'search_memory';
+    const stepIdx=data.step_index||agentIteration-1;
+
+    agentAddLog(`💬 speak_then_continue: "${msg.substring(0,60)}"`,'step');
+    agentAddStepCard(agentIteration,stepName,msg||'Memory check','active');
+    agentSetCurrentAction(msg||'Processing memory…');
+    agentSetStatus('Thinking','Speaking memory result…');
+
+    speak(msg,true);
+    // Wait for TTS proportional to word count
+    const wordCount=msg.split(' ').length;
+    await wait(Math.min(3500,Math.max(800,wordCount*270)));
+
+    agentMarkStepDone(agentIteration);agentIteration++;
+
+    try{
+      const r=await fetch('/api/agent/frontend_result',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({session_id:agentSessionId,result:backendResult,tool:stepName,success:true,step_index:stepIdx})
+      });
+      const d=await r.json();await handleAgentResponse(d,agentIteration);
+    }catch(e){
+      agentAddLog('❌ speak_then_continue network error: '+e.message,'error');
+      speak('I had a network problem. Please say My Eye help me to try again.',true);
+      agentActive=false;agentSessionId='';document.body.classList.remove('agent-mode-active');
+      setTimeout(()=>hideAgentDashboard(),2000);
+    }
+    return;
+  }
+
+  // ── ASK USER ──
+  if(action==='ask_user'){
+    const question=data.question||data.voice_response||'What would you like to do?';
+    const qid=data.question_id||String(Date.now());
+    const expectedResponse=data.expected_response||'free_text';
+
+    agentCurrentQuestionId=qid;agentCurrentQuestion=question;
+    agentWaitingForUser=true;agentListenRetries=0;
+
+    agentAddLog(`💬 Question: "${question.substring(0,70)}"`,'step');
+    agentAddStepCard(agentIteration,'ask_user',question,'active');
+    agentShowUserWait(question,expectedResponse);
+    agentSetStatus('Listening','Waiting for your answer…');
+
+    speak(question,true);
+
+    // Wait for TTS then start mic
+    const wordCount=question.split(' ').length;
+    const speakDelay=Math.max(1200,wordCount*300);
+    setTimeout(()=>{
+      if(agentWaitingForUser&&agentCurrentQuestionId===qid){agentStartListeningForUser(qid);}
+    },speakDelay);
+    return;
+  }
+
+  // ── FRONTEND ACTION ──
+  if(action==='frontend_action'){
+    const frontendAction=data.frontend_action;
+    const query=data.query||'';
+    const destination=data.destination||'';
+    const resultDiv=data.result_div||'';
+    const waitMs=data.wait_ms||6000;
+    const voiceResp=data.voice_response||'';
+    const stepIdx=data.step_index||agentIteration-1;
+
+    agentAddLog(`🎬 Frontend: ${frontendAction} query="${query.substring(0,30)}" wait=${waitMs}ms`,'step');
+    agentAddStepCard(agentIteration,frontendAction,voiceResp||frontendAction,'active');
+    agentSetCurrentAction(voiceResp||`Running ${frontendAction}…`);
+    agentSetStatus('Running',`Executing: ${frontendAction}…`);
+
+    if(voiceResp)speak(voiceResp,true);
+
+    let resultText='';let triggerOk=true;
+    try{
+      resultText=await triggerAgentFrontendAction(frontendAction,query,destination,resultDiv,waitMs);
+    }catch(triggerErr){
+      agentAddLog(`⚠ Trigger error: ${triggerErr.message}`,'warn');
+      triggerOk=false;resultText=voiceResp||`${frontendAction} completed`;
+    }
+
+    agentAddLog(`📋 Result (${resultText.length} chars): "${resultText.substring(0,80)}"`,'info');
+    agentMarkStepDone(agentIteration);
+
+    try{
+      const fr=await fetch('/api/agent/frontend_result',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({session_id:agentSessionId,result:resultText,tool:frontendAction,success:triggerOk,step_index:stepIdx})
+      });
+      const fd=await fr.json();agentIteration++;await handleAgentResponse(fd,agentIteration);
+    }catch(e){
+      agentAddLog('❌ frontend_result error: '+e.message,'error');
+      speak('I had a network problem continuing. Please say My Eye help me to try again.',true);
+      agentActive=false;agentWaitingForUser=false;agentSessionId='';agentCurrentQuestionId='';
+      document.body.classList.remove('agent-mode-active');setTimeout(()=>hideAgentDashboard(),2000);
+    }
+    return;
+  }
+
+  agentAddLog(`⚠ Unknown action "${action}" — ignoring`,'warn');
+  if(data.voice_response)speak(data.voice_response,true);
+}
+
+// ════════════════════════════════════════════════════════════════
+// triggerAgentFrontendAction — returns Promise<string> with real result
+// Uses waitForMeaningfulResult to poll actual result divs
+// ════════════════════════════════════════════════════════════════
+async function triggerAgentFrontendAction(frontendAction,query,destination,resultDiv,waitMs){
+
+  if(frontendAction==='start_camera'){
+    await startCamera();return'Camera started successfully';
+  }
+
+  if(frontendAction==='start_food'){
+    // Clear old result first
+    const el=document.getElementById('foodResult');if(el){el.className='result';el.textContent='';}
+    if(!myStreams['food'])await startMyEyeCam('food');
+    await wait(800);setMyEyeMode('food','normal');
+    runMyEyeNormal('food');// non-blocking
+    try{return await waitForMeaningfulResult('foodResult',20,waitMs||30000);}
+    catch(e){return query?`Food analysis for ${query} completed`:'Food analysis completed';}
+  }
+
+  if(frontendAction==='start_traffic'){
+    const el=document.getElementById('trafficResult');if(el){el.className='result';el.textContent='';}
+    if(!myStreams['traffic'])await startMyEyeCam('traffic');
+    await wait(800);setMyEyeMode('traffic','normal');
+    runMyEyeNormal('traffic');
+    try{return await waitForMeaningfulResult('trafficResult',6,waitMs||20000);}
+    catch(e){return'Traffic light detection completed';}
+  }
+
+  if(frontendAction==='start_stairs'){
+    const el=document.getElementById('stairResult');if(el){el.className='result';el.textContent='';}
+    if(!myStreams['stair'])await startMyEyeCam('stair');
+    await wait(800);setMyEyeMode('stair','normal');
+    runMyEyeNormal('stair');
+    try{return await waitForMeaningfulResult('stairResult',20,waitMs||30000);}
+    catch(e){return'Stair detection completed';}
+  }
+
+  if(frontendAction==='start_scene'){
+    const el=document.getElementById('wifResult');if(el){el.className='result';el.textContent='';}
+    if(!myStreams['wif'])await startMyEyeCam('wif');
+    await wait(800);
+    const wq=document.getElementById('wifQuestion');if(wq&&query)wq.value=query;
+    setMyEyeMode('wif','normal');runMyEyeNormal('wif');
+    try{return await waitForMeaningfulResult('wifResult',20,waitMs||30000);}
+    catch(e){return'Scene description completed';}
+  }
+
+  if(frontendAction==='start_finder'){
+    const el=document.getElementById('finderResult');if(el){el.className='result';el.textContent='';}
+    if(query){const qi=document.getElementById('findObjectQuery');if(qi)qi.value=query;}
+    if(!myStreams['finder'])await startMyEyeCam('finder');
+    await wait(800);
+    startFinderScan();// non-blocking — 30s scan populates finderResult
+    try{return await waitForMeaningfulResult('finderResult',20,waitMs||35000);}
+    catch(e){return`360 scan for ${query||'object'} completed`;}
+  }
+
+  if(frontendAction==='start_reader'){
+    const el=document.getElementById('readResult');if(el){el.className='result';el.textContent='';}
+    startReadAutoCapture();// non-blocking
+    try{return await waitForMeaningfulResult('readResult',30,waitMs||30000);}
+    catch(e){return'Page reading completed';}
+  }
+
+  if(frontendAction==='start_navigate'){
+    if(destination){const ni=document.getElementById('endLocation');if(ni)ni.value=destination;}
+    findRoute();return`Navigation started to ${destination||query}`;
+  }
+
+  if(frontendAction==='indoor_navigate'){
+    await indoorNavigateToRoom(destination||query);return`Indoor navigation to ${destination||query} started`;
+  }
+
+  if(frontendAction==='start_rag'){
+    const el=document.getElementById('ragResult');if(el){el.className='result';el.textContent='';}
+    startRagAutoCapture();
+    try{return await waitForMeaningfulResult('ragResult',20,waitMs||30000);}
+    catch(e){return'RAG document scan completed';}
+  }
+
+  return`${frontendAction} triggered`;
+}
+
+// ════════════════════════════════════════════════════════════════
+// AGENT — agentSendUserVoiceResponse
+// Called from recognition.onresult and quick-response buttons
+// ════════════════════════════════════════════════════════════════
+async function agentSendUserVoiceResponse(response){
+  if(!agentActive||!agentSessionId)return;
+  const qid=agentCurrentQuestionId;
+  agentCurrentQuestionId='';agentWaitingForUser=false;
+  _clearAgentListenTimeout();agentStopMicIndicator();agentHideUserWait();
+  agentAddLog(`👤 User said: "${response}"`,'info');
+  agentSetCurrentAction('Processing your answer…');
+  agentSetStatus('Thinking','Processing your answer…');
+  agentMarkStepDone(agentIteration);agentIteration++;
+  try{
+    const r=await fetch('/api/agent/respond',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({session_id:agentSessionId,question_id:qid,response})
+    });
+    const d=await r.json();await handleAgentResponse(d,agentIteration);
+  }catch(e){
+    agentAddLog('❌ Agent respond error: '+e.message,'error');
+    speak('I had trouble processing your answer. Please say My Eye help me to try again.',true);
+    agentActive=false;agentSessionId='';document.body.classList.remove('agent-mode-active');
+    setTimeout(()=>hideAgentDashboard(),2000);
+  }
+}
+
+async function agentSendQuickResponse(response){await agentSendUserVoiceResponse(response);}
+
+// ════════════════════════════════════════════════════════════════
+// AGENT — startAgentTask (entry point)
+// ════════════════════════════════════════════════════════════════
+async function startAgentTask(goal) {
+  if (!goal || !goal.trim()) { speak('What would you like me to help you with?'); return; }
+ 
+  // Show dashboard FIRST — before any async
+  showAgentDashboard();
+  document.body.classList.add('agent-mode-active');
+ 
+  // Stop any existing agent session
+  if (agentActive && agentSessionId) {
+    const oldSid = agentSessionId;
+    agentActive = false; agentSessionId = ''; agentWaitingForUser = false;
+    agentCurrentQuestionId = ''; recognitionPausedForAgent = false;
+    _clearAgentListenTimeout(); agentStopMicIndicator();
+    fetch('/api/agent/stop', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: oldSid })
+    }).catch(() => {});
+    await wait(300);
+  }
+ 
+  agentGoal = goal.trim(); agentActive = true; agentSessionId = '';
+  agentWaitingForUser = false; agentCurrentQuestionId = ''; agentCurrentQuestion = '';
+  agentIteration = 1; agentListenRetries = 0;
+ 
+  // Reset dashboard UI
+  const gd = document.getElementById('agentGoalDisplay'); if (gd) gd.textContent = agentGoal;
+  const sl = document.getElementById('agentStepsList');
+  if (sl) sl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:.75rem"><div class="loader"></div><p style="margin-top:8px">Agent is deciding the best approach…</p></div>';
+  const cs = document.getElementById('agentCurrentStrip'); if (cs) cs.classList.remove('show');
+  const uw = document.getElementById('agentUserWait'); if (uw) uw.classList.remove('show');
+  const pb = document.getElementById('agentProgressBar'); if (pb) pb.style.width = '5%';
+ 
+  agentSetStatus('Running', 'Calling LLM to plan approach…');
+  setModeIndicator('🤖 Agent Active');
+ 
+  // ── KEY CHANGE: DO NOT switchTab(4) ──
+  // The user stays on whichever tab they are on (accessibility tab = tab 2)
+  // switchTab(4);  <-- REMOVED
+ 
+  agentAddLog(`▶ Starting: "${agentGoal}"`, 'step');
+  speak(`I will help you ${agentGoal}. Let me think about the best approach.`);
+ 
+  try {
+    const r = await fetch('/api/agent/start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ goal: agentGoal })
+    });
+    const d = await r.json();
+    if (!d.success) {
+      speak(d.voice_response || 'I could not start the agent. Please try again.');
+      agentAddLog('❌ Agent start failed', 'error');
+      agentSetStatus('Error', 'Failed to start');
+      agentActive = false; agentSessionId = '';
+      document.body.classList.remove('agent-mode-active');
+      hideAgentDashboard(); return;
+    }
+    agentSessionId = d.session_id || '';
+    agentAddLog(`✅ Session: ${agentSessionId || 'no-id'} task=${d.task_type || '?'}`, 'success');
+    await handleAgentResponse(d, 1);
+  } catch (e) {
+    agentAddLog('❌ Agent start error: ' + e.message, 'error');
+    speak('I had a problem starting the agent. Please check your connection and try again.');
+    agentActive = false; agentSessionId = '';
+    document.body.classList.remove('agent-mode-active');
+    hideAgentDashboard();
+  }
+}
+
+// ════════════════════════════════════════════════════════════════
+// AGENT — cancelAgentTask
+// ════════════════════════════════════════════════════════════════
+async function cancelAgentTask(){
+  _clearAgentListenTimeout();agentStopMicIndicator();
+  agentWaitingForUser=false;agentCurrentQuestionId='';recognitionPausedForAgent=false;
+  const sid=agentSessionId;agentActive=false;agentSessionId='';
+  agentHideUserWait();hideAgentDashboard();
+  document.body.classList.remove('agent-mode-active');
+  setModeIndicator('System Ready');
+  speak('Task cancelled.');toast('Agent cancelled','warn');
+  agentSetStatus('Idle','Cancelled by user');agentAddLog('🛑 Cancelled by user','warn');
+  if(sid)fetch('/api/agent/stop',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:sid})}).catch(()=>{});
+}
+
+async function runAgentPreset(goal){const gi=document.getElementById('agentGoalInput');if(gi)gi.value=goal;await startAgentTask(goal);}
+async function startAgentFromInput(){const gi=document.getElementById('agentGoalInput');const goal=gi?gi.value.trim():'';if(!goal){speak('Please enter a goal first.');return;}await startAgentTask(goal);}
+
+async function pollAgentStatus(){
+  if(!agentActive||!agentSessionId)return;
+  try{
+    const r=await fetch(`/api/agent/status?session_id=${encodeURIComponent(agentSessionId)}`);
+    const d=await r.json();
+    if(!d.active&&agentActive){
+      agentAddLog('⚠ Session expired on server — cleaning up','warn');
+      agentActive=false;agentWaitingForUser=false;agentSessionId='';agentCurrentQuestionId='';
+      _clearAgentListenTimeout();agentStopMicIndicator();recognitionPausedForAgent=false;
+      document.body.classList.remove('agent-mode-active');setTimeout(()=>hideAgentDashboard(),2000);
+    }
+  }catch(e){}
+}
+
+// ════════════════════════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded',()=>{
+  if(typeof L!=='undefined')initMap();
+  initVoiceRec();initWakeRec();
+
+  setInterval(updateSensor,1200);setInterval(updateTime,1000);
+  setInterval(pollActiveMode,3000);setInterval(pollGlobalStop,2000);setInterval(pollAgentStatus,5000);
+
+  // Standard controls
+  document.getElementById('startCameraBtn')?.addEventListener('click',startCamera);
+  document.getElementById('stopCameraBtn')?.addEventListener('click',()=>stopCamera());
+  document.getElementById('globalStopBtn')?.addEventListener('click',globalStop);
+  document.getElementById('stopVoiceBtn2')?.addEventListener('click',stopVoiceOutput);
+  document.getElementById('resumeVoiceBtn2')?.addEventListener('click',resumeVoiceOutput);
+
+  // Nav
+  document.getElementById('findRouteBtn')?.addEventListener('click',findRoute);
+  document.getElementById('endLocation')?.addEventListener('keypress',e=>{if(e.key==='Enter')findRoute();});
+  document.getElementById('indoorNavBtn')?.addEventListener('click',async()=>{
+    const sel=document.getElementById('destRoom');
+    const dest=sel&&sel.options[sel.selectedIndex]?sel.options[sel.selectedIndex].textContent:'';
+    if(dest&&dest!=='Select destination…')await indoorNavigateToRoom(dest);else speak('Please select a destination');
+  });
+  document.getElementById('detectLocBtn')?.addEventListener('click',async()=>{
+    if(!isCameraActive){alert('Start main camera first');return;}
+    const video=document.getElementById('cameraFeed');const canvas=document.getElementById('cameraCanvas');if(!video)return;
+    canvas.width=video.videoWidth||640;canvas.height=video.videoHeight||480;canvas.getContext('2d').drawImage(video,0,0);
+    const imgData=canvas.toDataURL('image/jpeg',0.8);
+    try{
+      const r=await fetch('/api/indoor/get-current-location',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image_data:imgData})});
+      const d=await r.json();const cr=document.getElementById('currentRoom');
+      if(d.status==='success'&&cr){cr.textContent=`📍 ${d.location.name}`;speak(`You are in the ${d.location.name}`);}
+      else if(cr)cr.textContent='❌ Not detected';
+    }catch(e){const cr=document.getElementById('currentRoom');if(cr)cr.textContent='❌ Error';}
+  });
+
+  // Video upload
+  document.getElementById('videoUploadArea')?.addEventListener('click',()=>document.getElementById('videoFileInput')?.click());
+  document.getElementById('videoFileInput')?.addEventListener('change',async(e)=>{
+    const file=e.target.files[0];if(!file)return;
+    const formData=new FormData();formData.append('file',file);
+    const dot=document.getElementById('indoorDot');if(dot)dot.className='status-dot scanning';
+    const txt=document.getElementById('indoorStatusTxt');if(txt)txt.textContent='🤖 AI analyzing video…';
+    const prog=document.getElementById('uploadProg');if(prog)prog.style.display='block';
+    let pct=0;const pint=setInterval(()=>{pct+=3;if(pct<=85){const pf=document.getElementById('uploadProgFill');if(pf)pf.style.width=pct+'%';}},2000);
+    try{
+      const r=await fetch('/api/indoor/upload-video',{method:'POST',body:formData});const d=await r.json();
+      clearInterval(pint);const pf=document.getElementById('uploadProgFill');if(pf)pf.style.width='100%';
+      setTimeout(()=>{if(prog)prog.style.display='none';},1500);
+      if(d.status==='success'){
+        if(dot)dot.className='status-dot captured';if(txt)txt.textContent=`✅ Map: ${(d.rooms||[]).length} rooms`;
+        await loadIndoorMap();speak(`Indoor map created with ${(d.rooms||[]).length} rooms`);
+      }else{if(txt)txt.textContent=`❌ Error: ${d.error||'Unknown'}`;if(dot)dot.className='status-dot';}
+    }catch(e){clearInterval(pint);if(prog)prog.style.display='none';if(txt)txt.textContent='❌ Upload failed';}
+    e.target.value='';
+  });
+
+  // RAG file upload
+  document.getElementById('ragUploadArea')?.addEventListener('click',()=>document.getElementById('ragFileInput')?.click());
+  document.getElementById('ragFileInput')?.addEventListener('change',async(e)=>{
+    const file=e.target.files[0];if(!file)return;
+    const formData=new FormData();formData.append('file',file);
+    const rum=document.getElementById('ragUploadMsg');if(rum)rum.style.display='block';
+    const rmt=document.getElementById('ragUploadMsgTxt');if(rmt)rmt.innerHTML='<div class="loader"></div><p>Uploading…</p>';
+    try{
+      const r=await fetch('/api/rag-upload',{method:'POST',body:formData});const d=await r.json();
+      if(d.status==='success'){if(rmt)rmt.innerHTML=`<i class="fas fa-check-circle" style="color:var(--accent)"></i> ${esc(d.message||d.voice_response||'')}`;speak('Document uploaded to knowledge base');setTimeout(()=>{if(rum)rum.style.display='none';},4000);}
+      else if(rmt)rmt.innerHTML=`⚠️ ${esc(d.message||'Upload failed')}`;
+    }catch(e){if(rmt)rmt.innerHTML='⚠️ Upload error';}
+    e.target.value='';
+  });
+
+  // Feature buttons
+  document.getElementById('startRagBtn')?.addEventListener('click',startRagAutoCapture);
+  document.getElementById('stopRagBtn')?.addEventListener('click',()=>stopRagAutoCapture());
+  document.getElementById('startReadBtn')?.addEventListener('click',startReadAutoCapture);
+  document.getElementById('stopReadBtn')?.addEventListener('click',()=>stopReadAutoCapture());
+
+  FEATURES.forEach(f=>{
+    document.getElementById(f+'CamBtn')?.addEventListener('click',()=>startMyEyeCam(f));
+    document.getElementById(f+'AnalyzeBtn')?.addEventListener('click',()=>f==='finder'?startFinderScan():runMyEyeNormal(f));
+    document.getElementById(f+'LiveBtn')?.addEventListener('click',()=>startMyEyeLive(f));
+    document.getElementById(f+'StopBtn')?.addEventListener('click',()=>stopMyEyeLive(f));
+  });
+  document.getElementById('finderCamBtn')?.addEventListener('click',()=>startMyEyeCam('finder'));
+  document.getElementById('finderStartScanBtn')?.addEventListener('click',startFinderScan);
+  document.getElementById('finderStopBtn')?.addEventListener('click',()=>{
+    finderScanRunning=false;stopMyEyeLive('finder');
+    const fb=document.getElementById('finderBadge');if(fb){fb.textContent='🔍 Idle';fb.className='badge';}
+  });
+
+  // Voice
+  document.getElementById('startVoiceBtn')?.addEventListener('click',startListeningVoice);
+  document.getElementById('stopVoiceBtn')?.addEventListener('click',stopListeningVoice);
+
+  // SOS
+  document.getElementById('sosMainBtn')?.addEventListener('click',triggerSOS);
+  document.getElementById('cancelSOSBtn')?.addEventListener('click',cancelSOS);
+
+  // Memory
+  document.getElementById('memoryCamBtn')?.addEventListener('click',startMemoryCam);
+  document.getElementById('memoryCamStopBtn')?.addEventListener('click',()=>stopMemoryCam());
+  document.getElementById('memorySaveBtn')?.addEventListener('click',saveMemoryObject);
+  document.getElementById('findMemoryCamBtn')?.addEventListener('click',startFindMemoryCam);
+  document.getElementById('findMemoryCamStopBtn')?.addEventListener('click',()=>stopFindMemoryCam());
+  document.getElementById('findMemorySearchBtn')?.addEventListener('click',findFromMemory);
+  document.getElementById('findMemoryMicBtn')?.addEventListener('click',async()=>{
+    speak('What are you looking for?',true);await waitForSpeechEnd();await wait(200);
+    const q=await listenForSinglePhrase();
+    if(q){const qi=document.getElementById('findMemoryQuery');if(qi)qi.value=q;findFromMemory();}
+  });
+
+  // Agent
+  document.getElementById('agentGoalInput')?.addEventListener('keypress',e=>{if(e.key==='Enter')startAgentFromInput();});
+  document.getElementById('agentStartBtn')?.addEventListener('click',startAgentFromInput);
+
+    loadMemoryList();
+  setTimeout(() => speak('Vision Assist version 16 ready. All backend and frontend fixes applied. Say My Eye to start, or say My Eye help me to use agent mode.'), 1800);
+ 
+  // ── Always open on the accessibility / wake-orb tab ──
+  switchTab(2);
+ 
+}); 
+
+window.addEventListener('beforeunload',()=>{
+  if(cameraStream)cameraStream.getTracks().forEach(t=>t.stop());
+  if(ragStream)ragStream.getTracks().forEach(t=>t.stop());
+  if(readStream)readStream.getTracks().forEach(t=>t.stop());
+  if(memoryStream)memoryStream.getTracks().forEach(t=>t.stop());
+  if(findMemoryStream)findMemoryStream.getTracks().forEach(t=>t.stop());
+  Object.values(myStreams).forEach(s=>{if(s)s.getTracks().forEach(t=>t.stop());});
+  if(detectionInterval)clearInterval(detectionInterval);
+  if(ragInterval)clearInterval(ragInterval);if(readInterval)clearInterval(readInterval);
+  Object.values(myTimers).forEach(t=>{if(t)clearTimeout(t);});
+  _clearAgentListenTimeout();
+  if(recognition)try{recognition.stop();}catch(e){}
+  if(wakeRec)try{wakeRec.stop();}catch(e){}
+  if(agentActive&&agentSessionId){fetch('/api/agent/stop',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:agentSessionId})}).catch(()=>{});}
+});
+</script>
+</body>
+</html>
