@@ -83,13 +83,9 @@ Say **"My Eye"** followed by any command:
 
 ---
 
-
-
----
-
 ## 👤 Built By
 
-**[Prince Jha]** — Solo Developer
+**Prince Jha** — Solo Developer
 
 ---
 
