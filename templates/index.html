@@ -2412,84 +2412,118 @@ async function handleAgentResponse(data,stepNum){
 // triggerAgentFrontendAction — returns Promise<string> with real result
 // Uses waitForMeaningfulResult to poll actual result divs
 // ════════════════════════════════════════════════════════════════
-async function triggerAgentFrontendAction(frontendAction,query,destination,resultDiv,waitMs){
+async function triggerAgentFrontendAction(frontendAction, query, destination, resultDiv, waitMs) {
 
-  if(frontendAction==='start_camera'){
-    await startCamera();return'Camera started successfully';
+  if (frontendAction === 'start_camera') {
+    await startCamera();
+    return 'Camera started successfully';
   }
 
-  if(frontendAction==='start_food'){
-    // Clear old result first
-    const el=document.getElementById('foodResult');if(el){el.className='result';el.textContent='';}
-    if(!myStreams['food'])await startMyEyeCam('food');
-    await wait(800);setMyEyeMode('food','normal');
-    runMyEyeNormal('food');// non-blocking
-    try{return await waitForMeaningfulResult('foodResult',20,waitMs||30000);}
-    catch(e){return query?`Food analysis for ${query} completed`:'Food analysis completed';}
+  if (frontendAction === 'start_food') {
+    const el = document.getElementById('foodResult');
+    if (el) { el.className = 'result'; el.textContent = ''; }
+    if (!myStreams['food']) await startMyEyeCam('food');
+    await wait(800);
+    setMyEyeMode('food', 'normal');
+    runMyEyeNormal('food');
+    try { return await waitForMeaningfulResult('foodResult', 20, waitMs || 30000); }
+    catch (e) { return query ? `Food analysis for ${query} completed` : 'Food analysis completed'; }
   }
 
-  if(frontendAction==='start_traffic'){
-    const el=document.getElementById('trafficResult');if(el){el.className='result';el.textContent='';}
-    if(!myStreams['traffic'])await startMyEyeCam('traffic');
-    await wait(800);setMyEyeMode('traffic','normal');
+  if (frontendAction === 'start_traffic') {
+    const el = document.getElementById('trafficResult');
+    if (el) { el.className = 'result'; el.textContent = ''; }
+    if (!myStreams['traffic']) await startMyEyeCam('traffic');
+    await wait(800);
+    setMyEyeMode('traffic', 'normal');
     runMyEyeNormal('traffic');
-    try{return await waitForMeaningfulResult('trafficResult',6,waitMs||20000);}
-    catch(e){return'Traffic light detection completed';}
+    try { return await waitForMeaningfulResult('trafficResult', 6, waitMs || 20000); }
+    catch (e) { return 'Traffic light detection completed'; }
   }
 
-  if(frontendAction==='start_stairs'){
-    const el=document.getElementById('stairResult');if(el){el.className='result';el.textContent='';}
-    if(!myStreams['stair'])await startMyEyeCam('stair');
-    await wait(800);setMyEyeMode('stair','normal');
+  if (frontendAction === 'start_stairs') {
+    const el = document.getElementById('stairResult');
+    if (el) { el.className = 'result'; el.textContent = ''; }
+    if (!myStreams['stair']) await startMyEyeCam('stair');
+    await wait(800);
+    setMyEyeMode('stair', 'normal');
     runMyEyeNormal('stair');
-    try{return await waitForMeaningfulResult('stairResult',20,waitMs||30000);}
-    catch(e){return'Stair detection completed';}
+    try { return await waitForMeaningfulResult('stairResult', 20, waitMs || 30000); }
+    catch (e) { return 'Stair detection completed'; }
   }
 
-  if(frontendAction==='start_scene'){
-    const el=document.getElementById('wifResult');if(el){el.className='result';el.textContent='';}
-    if(!myStreams['wif'])await startMyEyeCam('wif');
+  // ── start_scene: run What's In Front, wait for REAL result, return it ──────
+  // The backend will then decide: found → complete, not found → start_finder
+  if (frontendAction === 'start_scene') {
+    const el = document.getElementById('wifResult');
+    if (el) { el.className = 'result'; el.textContent = ''; }
+    if (!myStreams['wif']) await startMyEyeCam('wif');
     await wait(800);
-    const wq=document.getElementById('wifQuestion');if(wq&&query)wq.value=query;
-    setMyEyeMode('wif','normal');runMyEyeNormal('wif');
-    try{return await waitForMeaningfulResult('wifResult',20,waitMs||30000);}
-    catch(e){return'Scene description completed';}
+    // Inject the specific search query so the AI knows what to look for
+    const wq = document.getElementById('wifQuestion');
+    if (wq && query) wq.value = query;
+    setMyEyeMode('wif', 'normal');
+    runMyEyeNormal('wif'); // non-blocking — populates wifResult
+    try {
+      // Wait for meaningful text (not loader text) — up to waitMs
+      const result = await waitForMeaningfulResult('wifResult', 20, waitMs || 15000);
+      agentAddLog(`👁 Scene result: "${result.substring(0, 80)}"`, 'info');
+      return result;
+    } catch (e) {
+      agentAddLog('⚠ Scene timeout — returning empty', 'warn');
+      return ''; // empty string → backend will treat as not found → triggers scan
+    }
   }
 
-  if(frontendAction==='start_finder'){
-    const el=document.getElementById('finderResult');if(el){el.className='result';el.textContent='';}
-    if(query){const qi=document.getElementById('findObjectQuery');if(qi)qi.value=query;}
-    if(!myStreams['finder'])await startMyEyeCam('finder');
+  // ── start_finder: 360 scan — only reached if scene check returned not-found ─
+  if (frontendAction === 'start_finder') {
+    const el = document.getElementById('finderResult');
+    if (el) { el.className = 'result'; el.textContent = ''; }
+    if (query) {
+      const qi = document.getElementById('findObjectQuery');
+      if (qi) qi.value = query;
+    }
+    if (!myStreams['finder']) await startMyEyeCam('finder');
     await wait(800);
-    startFinderScan();// non-blocking — 30s scan populates finderResult
-    try{return await waitForMeaningfulResult('finderResult',20,waitMs||35000);}
-    catch(e){return`360 scan for ${query||'object'} completed`;}
+    startFinderScan(); // non-blocking — 30s scan populates finderResult
+    try {
+      const result = await waitForMeaningfulResult('finderResult', 20, waitMs || 35000);
+      agentAddLog(`🔍 360 scan result: "${result.substring(0, 80)}"`, 'info');
+      return result;
+    } catch (e) {
+      agentAddLog('⚠ 360 scan timeout', 'warn');
+      return `Could not find ${query || 'the object'} in the room scan.`;
+    }
   }
 
-  if(frontendAction==='start_reader'){
-    const el=document.getElementById('readResult');if(el){el.className='result';el.textContent='';}
-    startReadAutoCapture();// non-blocking
-    try{return await waitForMeaningfulResult('readResult',30,waitMs||30000);}
-    catch(e){return'Page reading completed';}
+  if (frontendAction === 'start_reader') {
+    const el = document.getElementById('readResult');
+    if (el) { el.className = 'result'; el.textContent = ''; }
+    startReadAutoCapture();
+    try { return await waitForMeaningfulResult('readResult', 30, waitMs || 30000); }
+    catch (e) { return 'Page reading completed'; }
   }
 
-  if(frontendAction==='start_navigate'){
-    if(destination){const ni=document.getElementById('endLocation');if(ni)ni.value=destination;}
-    findRoute();return`Navigation started to ${destination||query}`;
+  if (frontendAction === 'start_navigate') {
+    if (destination) { const ni = document.getElementById('endLocation'); if (ni) ni.value = destination; }
+    findRoute();
+    return `Navigation started to ${destination || query}`;
   }
 
-  if(frontendAction==='indoor_navigate'){
-    await indoorNavigateToRoom(destination||query);return`Indoor navigation to ${destination||query} started`;
+  if (frontendAction === 'indoor_navigate') {
+    await indoorNavigateToRoom(destination || query);
+    return `Indoor navigation to ${destination || query} started`;
   }
 
-  if(frontendAction==='start_rag'){
-    const el=document.getElementById('ragResult');if(el){el.className='result';el.textContent='';}
+  if (frontendAction === 'start_rag') {
+    const el = document.getElementById('ragResult');
+    if (el) { el.className = 'result'; el.textContent = ''; }
     startRagAutoCapture();
-    try{return await waitForMeaningfulResult('ragResult',20,waitMs||30000);}
-    catch(e){return'RAG document scan completed';}
+    try { return await waitForMeaningfulResult('ragResult', 20, waitMs || 30000); }
+    catch (e) { return 'RAG document scan completed'; }
   }
 
-  return`${frontendAction} triggered`;
+  return `${frontendAction} triggered`;
 }
 
 // ════════════════════════════════════════════════════════════════
