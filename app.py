@@ -1,4 +1,139 @@
-
+# =============================================================================
+# VisionAssist AI v16 — COMPLETE ENTERPRISE-GRADE app.py
+# ALL 18 BACKEND FIXES APPLIED + HTML CHANGE NOTES INCLUDED AS COMMENTS
+# =============================================================================
+#
+# FIXES SUMMARY:
+# FIX 1:  Removed illegal request._cached_json; /api/agent/frontend_result is now a proper route
+# FIX 2:  /api/agent/frontend_result reads result, cleans it, stores in correct memory slot, calls _decide_next_step
+# FIX 3:  _decide_next_step (find_object) now READS scene_description and scan_result and uses _object_found_in_result
+# FIX 4:  _get_agent_session uses _agent_sessions_lock for thread-safe reads
+# FIX 5:  _cleanup_agent_sessions timeout increased from 600 → 1800 seconds
+# FIX 6:  _object_found_in_result: strong negatives override; positive location words confirm find
+# FIX 7:  find_memory_object always calls _try_visual_confirm_memory when frames+photos present
+# FIX 8:  groq_vision_call raises ValueError on empty response instead of silently returning ""
+# FIX 9:  Groq rate limit retry uses exponential backoff and rotates keys
+# FIX 10: _is_key_available resets failures to 0 and cooldown_until to 0 after cooldown expires
+# FIX 11: save_memory_object returns {"success": False, "error": "..."} if photo_filenames is empty
+# FIX 12: _try_visual_confirm_memory returns early message when memory_entry has no photos
+# FIX 13: ask_user action sets session.state = "waiting" and stores pending_question
+# FIX 14: extract_memory_from_command fallbacks: obj_part defaults to t, loc_part to "unknown location"
+# FIX 15: _get_best_key relies on corrected _is_key_available (covered by FIX 10)
+# FIX 16: /api/agent/start deletes existing session with same goal before creating new one
+# FIX 17: /api/agent/respond handles no_response flag with retry_count; auto-continues after 2 retries
+# FIX 18: _delete_agent_session and _save_agent_session both use _agent_sessions_lock
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# HTML CHANGES REQUIRED IN index.html (implement these alongside this file):
+#
+# HTML-CHANGE-A: speak_then_continue handler in handleAgentResponse():
+#   if (action === 'speak_then_continue') {
+#     const msg = data.voice_response || '';
+#     const backendResult = data.backend_result || '';
+#     const stepName = data.step_name || 'search_memory';
+#     const stepIdx = data.step_index || agentIteration - 1;
+#     agentAddStepCard(agentIteration, stepName, msg || 'Memory check', 'active');
+#     agentSetCurrentAction(msg || 'Processing memory…');
+#     speak(msg, true);
+#     await new Promise(resolve => {
+#       const chk = setInterval(() => {
+#         if (!synth.speaking) { clearInterval(chk); setTimeout(resolve, 400); }
+#       }, 100);
+#       setTimeout(() => { clearInterval(chk); resolve(); }, 8000);
+#     });
+#     agentMarkStepDone(agentIteration);
+#     agentIteration++;
+#     try {
+#       const r = await fetch('/api/agent/frontend_result', {
+#         method: 'POST', headers: {'Content-Type': 'application/json'},
+#         body: JSON.stringify({ session_id: agentSessionId, result: backendResult,
+#           tool: stepName, success: true, step_index: stepIdx })
+#       });
+#       await handleAgentResponse(await r.json(), agentIteration);
+#     } catch(e) {
+#       speak('I had a network problem. Please say My Eye help me to try again.', true);
+#       agentActive = false;
+#       document.body.classList.remove('agent-mode-active');
+#       setTimeout(() => hideAgentDashboard(), 2000);
+#     }
+#     return;
+#   }
+#
+# HTML-CHANGE-B: Replace startAgentVoiceListening() entirely:
+#   let recognitionPausedForAgent = false;
+#   function startAgentVoiceListening(questionId) {
+#     // CRITICAL: Do NOT create a new SpeechRecognition here.
+#     // The main recognition.onresult routes to agentSendUserVoiceResponse()
+#     // when agentWaitingForUser===true and agentCurrentQuestionId is set.
+#     agentShowMicIndicator();
+#     const sub = document.getElementById('agentDashSubtitle');
+#     if (sub) sub.textContent = '🎤 Listening — speak your answer now';
+#     if (recognition && isListening) return; // already running
+#     startListeningVoice();
+#   }
+#
+# HTML-CHANGE-C: Replace speak() to pause mic when agent speaks:
+#   function speak(text, priority = false) {
+#     if (!text || voiceStopped) return;
+#     if (priority) { speakQueue = [text]; synth.cancel(); isSpeaking = false; }
+#     else speakQueue.push(text);
+#     if (agentActive && recognition && isListening) {
+#       recognitionPausedForAgent = true;
+#       try { recognition.stop(); } catch(e) {}
+#       isListening = false;
+#       const ind = document.getElementById('listenInd'); if (ind) ind.classList.remove('active');
+#       const st = document.getElementById('voiceStatusTxt'); if (st) st.textContent = 'Paused by agent';
+#     }
+#     drainQueue();
+#   }
+#
+# HTML-CHANGE-D: Replace drainQueue() to restart mic after agent speech:
+#   function drainQueue() {
+#     if (isSpeaking || speakQueue.length === 0 || voiceStopped) return;
+#     const text = speakQueue.shift();
+#     isSpeaking = true; synth.cancel();
+#     const u = new SpeechSynthesisUtterance(text);
+#     u.rate = 0.92; u.pitch = 1;
+#     u.onend = () => {
+#       isSpeaking = false;
+#       if (agentActive && agentWaitingForUser && recognitionPausedForAgent) {
+#         recognitionPausedForAgent = false;
+#         setTimeout(() => { if (agentWaitingForUser && !isListening) startListeningVoice(); }, 200);
+#       }
+#       setTimeout(drainQueue, 200);
+#     };
+#     u.onerror = () => { isSpeaking = false; setTimeout(drainQueue, 200); };
+#     synth.speak(u); lastSpokenText = text;
+#   }
+#
+# HTML-CHANGE-E: Replace waitForMeaningfulResult() for reliable result polling:
+#   function waitForMeaningfulResult(elementId, minLength = 30, timeoutMs = 30000) {
+#     return new Promise((resolve, reject) => {
+#       const start = Date.now();
+#       const interval = setInterval(() => {
+#         const el = document.getElementById(elementId);
+#         if (el) {
+#           let text = (el.textContent || el.innerText || '').trim();
+#           text = text.replace(/^(Capturing\.\.\.|Analyzing\.\.\.|Loading\.\.\.|Searching memory…|Thinking\.\.\.|Scanning\.\.\.)\s*/i, '').trim();
+#           const isGeneric = /^(No objects detected|No result|Network error|Could not process|I cannot see|Not visible|Click Start|Camera off)$/i.test(text);
+#           if (text.length >= minLength && !isGeneric) { clearInterval(interval); resolve(text); return; }
+#         }
+#         if (Date.now() - start > timeoutMs) {
+#           clearInterval(interval);
+#           reject(new Error(`Timeout waiting for result in #${elementId}`));
+#         }
+#       }, 500);
+#     });
+#   }
+#
+# HTML-CHANGE-F: stopAgentVoiceListening() should only hide indicator (not stop main mic):
+#   function stopAgentVoiceListening() {
+#     _clearAgentListenTimeout();
+#     agentStopMicIndicator();
+#     agentWaitingForUser = false;
+#     // Do NOT stop main recognition — it handles wake word and other features
+#   }
+# =============================================================================
 
 import base64
 import heapq
@@ -1613,17 +1748,6 @@ def _agent_ask_user(session: AgentSession, question: str,
 
 # ── THE AGENT BRAIN: _decide_next_step ───────────────────────────────────────
 def _decide_next_step(session: AgentSession) -> dict:
-    """
-    Core agent reasoning function.
-    Reads session memory and decides what action to take next.
-    Prints full reasoning to terminal.
-    Returns a complete JSON-serializable response dict.
-
-    Called after:
-      - /api/agent/start          → first step
-      - /api/agent/frontend_result → next step after feature completes
-      - /api/agent/respond        → continue after user answers question
-    """
     mem  = session.memory
     task = mem.task_type
     obj  = mem.object_name
@@ -1639,20 +1763,17 @@ def _decide_next_step(session: AgentSession) -> dict:
     session.last_active = time.time()
     _save_agent_session(session)
 
-    # ── GOAL ALREADY ACHIEVED ─────────────────────────────────────────────────
     if session.final_result:
         mem.log("Final result already set — completing.")
         return _agent_complete(session, session.final_result)
 
     # ── FIND OBJECT ───────────────────────────────────────────────────────────
-    # FIX 3: Correctly reads scene_description and scan_result after they are stored
     if task == "find_object":
 
         # Step A: Memory check (instant, no camera needed)
         if not mem.memory_checked:
             mem.log(f"Step A: checking memory for '{obj}' — fastest path, no camera")
             mem.memory_checked = True
-            # Run memory check immediately on backend
             mem_result = find_memory_object(obj, [])
             mem.found_in_memory   = mem_result.get("found_in_memory", False)
             mem.memory_location   = mem_result.get("location", "")
@@ -1663,13 +1784,10 @@ def _decide_next_step(session: AgentSession) -> dict:
 
             if mem.found_in_memory:
                 msg = mem_result.get("message", "")
-                mem.log(f"  FOUND IN MEMORY — completing! msg='{msg[:60]}'")
+                mem.log(f"  FOUND IN MEMORY — completing immediately!")
                 return _agent_complete(session, msg)
 
-            mem.log("  Not in memory. Speaking result and auto-continuing to camera.")
-            # HTML-CHANGE-A: Frontend must handle speak_then_continue:
-            # speak voice_response, then immediately POST to /api/agent/frontend_result
-            # with backend_result — no waiting for user input.
+            mem.log("  Not in memory. Speaking and moving to camera scene check.")
             return {
                 "success":        True,
                 "session_id":     sid,
@@ -1684,7 +1802,7 @@ def _decide_next_step(session: AgentSession) -> dict:
                 "agent_active":   True,
             }
 
-        # Step B: Memory was already checked — if found, complete now
+        # Step A already ran — if found, complete
         if mem.found_in_memory:
             msg = (
                 f"I remember! Your {mem.color_prefix()}{mem.memory_name or obj} "
@@ -1692,35 +1810,40 @@ def _decide_next_step(session: AgentSession) -> dict:
             )
             return _agent_complete(session, msg)
 
-        # FIX 3: Step C — scene check. Only start if not yet checked.
+        # Step B: Scene description — only start if not yet checked
         if not mem.scene_checked:
-            mem.log(f"Step C: scene check — looking for {obj} in direct camera view")
+            mem.log(f"Step B: scene check — looking for {obj} in direct camera view")
             mem.scene_checked = True
             _save_agent_session(session)
             return _agent_frontend(session,
                 frontend_action="start_scene",
                 result_div="wifResult",
-                wait_ms=12000,
-                query=f"Can you see a {obj}? If yes, describe exactly where it is in the frame.",
+                wait_ms=15000,
+                query=(
+                    f"I am looking for a {obj}. "
+                    f"Can you see it anywhere in this image? "
+                    f"If yes, describe EXACTLY where it is (left, right, center, near, far, on what surface). "
+                    f"If not visible say clearly: I cannot see the {obj} in this frame."
+                ),
                 voice=(
-                    f"I don't have it saved. Let me look at what's in front of you now. "
+                    f"I don't have it in memory. Let me look at what's in front of you now. "
                     f"Please point the camera around slowly."
                 ),
-                description=f"Quick look for {obj} in current view",
+                description=f"Checking scene directly for {obj}",
             )
 
-        # FIX 3: After scene_description is stored, analyze it before proceeding to scan
-        if mem.scene_description:
-            mem.log(f"Analyzing scene_description: '{mem.scene_description[:80]}'")
+        # Step B result is back — DECISION POINT
+        if mem.scene_checked and mem.scene_description:
+            mem.log(f"Step B result received. Analyzing: '{mem.scene_description[:100]}'")
             if _object_found_in_result(obj, mem.scene_description):
-                mem.log("Object FOUND in direct scene view! Completing.")
+                mem.log("✅ FOUND IN SCENE — completing immediately, skipping 360 scan!")
                 return _agent_complete(session, mem.scene_description)
             else:
-                mem.log("Not found in direct view. Proceeding to 360 scan.")
+                mem.log("❌ Not found in scene. Now starting 360 scan.")
 
-        # FIX 3: Step D — 360 scan. Only start if not yet checked.
+        # Step C: 360 scan — only if scene check failed
         if not mem.scan_checked:
-            mem.log(f"Step D: 360 scan — full room sweep for {obj}")
+            mem.log(f"Step C: 360 scan — full room sweep for {obj}")
             mem.scan_checked = True
             _save_agent_session(session)
             return _agent_frontend(session,
@@ -1729,23 +1852,23 @@ def _decide_next_step(session: AgentSession) -> dict:
                 wait_ms=35000,
                 query=obj,
                 voice=(
-                    f"I can't see it directly. Please slowly turn all the way around — "
+                    f"I couldn't see it directly. Please slowly turn all the way around — "
                     f"take about 20 to 25 seconds — while I scan every direction for your {obj}. "
                     f"I will tell you as soon as I see it."
                 ),
                 description=f"Full 360° room scan for {obj}",
             )
 
-        # FIX 3: After scan_result is stored, analyze it
+        # Step C result is back — DECISION POINT
         if mem.scan_result:
-            mem.log(f"Analyzing scan_result: '{mem.scan_result[:80]}'")
+            mem.log(f"Step C result received. Analyzing: '{mem.scan_result[:100]}'")
             if _object_found_in_result(obj, mem.scan_result):
-                mem.log("Object FOUND in 360 scan! Completing.")
+                mem.log("✅ FOUND IN 360 SCAN — completing!")
                 return _agent_complete(session, mem.scan_result)
             else:
-                mem.log("Not found in 360 scan either.")
+                mem.log("❌ Not found in 360 scan either.")
 
-        # Step E: Searched everywhere — give helpful final answer
+        # All steps exhausted — object not found anywhere
         mem.log("Searched memory, scene, and 360 scan — object not found anywhere.")
         not_found = (
             f"Dear friend, I searched my memory, looked directly in front of you, "
