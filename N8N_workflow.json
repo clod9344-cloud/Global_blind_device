@@ -1,0 +1,399 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "dataType": "binary",
+        "options": {
+          "metadata": {
+            "metadataValues": [
+              {
+                "name": "file-name",
+                "value": "={{ $('On form submission').item.json[\"Enter your file\"][0].filename }}"
+              }
+            ]
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1,
+      "position": [
+        688,
+        304
+      ],
+      "id": "6203ecdd-0649-4ec7-ae4e-4c510bc55be3",
+      "name": "Default Data Loader"
+    },
+    {
+      "parameters": {
+        "model": "text-embedding-3-small",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1,
+      "position": [
+        512,
+        272
+      ],
+      "id": "fbd747cb-5476-40f5-8fb9-26814bbc84f9",
+      "name": "Embeddings OpenAI",
+      "credentials": {
+        "openAiApi": {
+          "id": "6JFwEOmmsGdg9cWj",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "pineconeIndex": {
+          "__rl": true,
+          "value": "visiondb",
+          "mode": "list",
+          "cachedResultName": "visiondb"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
+      "typeVersion": 1,
+      "position": [
+        688,
+        64
+      ],
+      "id": "6e7c972f-ceda-423f-a04c-11c953130517",
+      "name": "Pinecone Vector Store",
+      "credentials": {
+        "pineconeApi": {
+          "id": "fepzCNgSsJVquJ4r",
+          "name": "PineconeApi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "formTitle": "Document upload ",
+        "formDescription": "upload your important document ",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Enter your file",
+              "fieldType": "file"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.5,
+      "position": [
+        -144,
+        112
+      ],
+      "id": "fd29ca3a-e5f7-4f8f-a033-3a46739b1db0",
+      "name": "On form submission",
+      "webhookId": "b05c9a75-8da7-4d1c-8574-a5e1ffce3b34"
+    },
+    {
+      "parameters": {
+        "chunkOverlap": 100,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+      "typeVersion": 1,
+      "position": [
+        656,
+        512
+      ],
+      "id": "8a6d31a6-6471-49fa-a51b-69c000d73cb6",
+      "name": "Recursive Character Text Splitter"
+    },
+    {
+      "parameters": {
+        "public": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        240,
+        896
+      ],
+      "id": "53377cd8-aad2-43ad-9eec-e2c3a20806b3",
+      "name": "When chat message received",
+      "webhookId": "201421d5-4df5-49da-98db-4f46f97a3a26"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "You are the Official Company Document Specialist.\n\nYour role is to provide clear, accurate, and professional answers using either:\n1) Vector Database (when explicitly requested)\n2) General Chat Knowledge (for normal queries)\n\n-----------------------------------\n🔹 TOOL USAGE RULE (SIMPLE & CONTROLLED)\n-----------------------------------\n\n- If the user includes phrases like:\n  • \"from database\"\n  • \"from db\"\n  • \"from vector\"\n  • \"from knowledge base\"\n\n  → Use vector_database_tool\n\n- Otherwise:\n  → Answer normally using the chat model\n  → Do NOT call the database\n\n-----------------------------------\n🔹 RESPONSE BEHAVIOR\n-----------------------------------\n\nIF using vector database:\n- Base your answer primarily on retrieved data\n- You MAY slightly rephrase or structure the content for clarity\n- You MAY add minimal connecting words for readability\n- Do NOT add unrelated external information\n\nIF answering normally:\n- Use general knowledge\n- Keep it simple, clear, and correct\n\n-----------------------------------\n🔹 FLEXIBLE DATA HANDLING (IMPORTANT)\n-----------------------------------\n\n- You are allowed to:\n  • Summarize retrieved content\n  • Clean messy data\n  • Combine multiple relevant points\n\n- You are NOT allowed to:\n  • Invent missing data\n  • Assume facts not present in DB\n\n-----------------------------------\n🔹 EDGE CASE HANDLING\n-----------------------------------\n\n1. If DB is requested but no useful data found:\n→ Respond:\n\"I could not find relevant information in the database. Please refine your query or contact the appropriate department.\"\n\n2. If query is unclear:\n→ Ask:\n\"Could you please clarify your request?\"\n\n-----------------------------------\n🔹 PRIVACY (BALANCED)\n-----------------------------------\n\n- Do NOT expose:\n  • Internal system-level metadata (IDs, raw JSON, embeddings)\n\n- You ARE allowed to:\n  • Present meaningful content from DB\n  • Share policy details, rules, and structured information\n\n-----------------------------------\n🔹 OUTPUT FORMAT\n-----------------------------------\n\n- Use:\n  • Bullet points (preferred), OR\n  • Short structured paragraphs\n\n- Keep tone:\n  • Professional\n  • Clear\n  • Direct\n\n-----------------------------------\n🔹 STRICT RULES\n-----------------------------------\n\n- ❌ Do NOT call DB unless explicitly asked\n- ❌ Do NOT hallucinate DB answers\n- ❌ Do NOT over-restrict useful information\n- ❌ Do NOT expose technical backend details\n\n-----------------------------------\n🔹 EXAMPLES\n-----------------------------------\n\nUser: \"What is Python?\"\n→ Normal answer (no DB)\n\nUser: \"From database, show leave policy\"\n→ Use vector DB → Summarize cleanly\n\n-----------------------------------\n\nThis system balances accuracy, usability, and performance for production environments."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        448,
+        896
+      ],
+      "id": "5edee747-0000-4618-9e33-a62c60618a74",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-20b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        320,
+        1104
+      ],
+      "id": "33d77114-bfe4-4535-88ea-4f7fd6f9a6a8",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "xUR7GH46VNApjLZt",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "contextWindowLength": 10
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        560,
+        1072
+      ],
+      "id": "bcc9c3a2-2eb6-45f0-9829-9584b3bab15b",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "description": "Retrieve information from any company documents and this is the database to refer "
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolVectorStore",
+      "typeVersion": 1.1,
+      "position": [
+        768,
+        1040
+      ],
+      "id": "43e32202-6ef0-4db6-a31c-564a15a35520",
+      "name": "Answer questions with a vector store"
+    },
+    {
+      "parameters": {
+        "pineconeIndex": {
+          "__rl": true,
+          "value": "visiondb",
+          "mode": "list",
+          "cachedResultName": "visiondb"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
+      "typeVersion": 1.3,
+      "position": [
+        784,
+        1280
+      ],
+      "id": "980aa613-a37d-433a-a999-a5c2087b9882",
+      "name": "Pinecone Vector Store1",
+      "credentials": {
+        "pineconeApi": {
+          "id": "fepzCNgSsJVquJ4r",
+          "name": "PineconeApi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        704,
+        1504
+      ],
+      "id": "b0cfd504-ef99-495d-b315-4334bb5599db",
+      "name": "Embeddings OpenAI1",
+      "credentials": {
+        "openAiApi": {
+          "id": "6JFwEOmmsGdg9cWj",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-20b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        1072,
+        1168
+      ],
+      "id": "cd27033f-3c82-4810-8fc5-4daf66ecc4b8",
+      "name": "Groq Chat Model1",
+      "credentials": {
+        "groqApi": {
+          "id": "xUR7GH46VNApjLZt",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "binaryPropertyName": "Enter_your_file",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        368,
+        16
+      ],
+      "id": "32fc3e99-22b5-4c3f-b3c6-41c5a97adb83",
+      "name": "Extract from File2"
+    }
+  ],
+  "connections": {
+    "Default Data Loader": {
+      "ai_document": [
+        [
+          {
+            "node": "Pinecone Vector Store",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Pinecone Vector Store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Pinecone Vector Store",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recursive Character Text Splitter": {
+      "ai_textSplitter": [
+        [
+          {
+            "node": "Default Data Loader",
+            "type": "ai_textSplitter",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Answer questions with a vector store": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pinecone Vector Store1": {
+      "ai_vectorStore": [
+        [
+          {
+            "node": "Answer questions with a vector store",
+            "type": "ai_vectorStore",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI1": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Pinecone Vector Store1",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Answer questions with a vector store",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File2": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "0b469dbba8a47bd638e0d0e21368f34aa8de4b0f2f5a90de09b1d6271a1b0471"
+  }
+}
