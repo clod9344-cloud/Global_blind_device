@@ -3062,6 +3062,7 @@ async function triggerAgentFrontendAction(frontendAction, query, destination, re
     }
     if (!myStreams['finder']) await startMyEyeCam('finder');
     await wait(800);
+    if (!agentActive) return 'Agent not active';
     startFinderScan(); // non-blocking — 30s scan populates finderResult
     try {
       const result = await waitForMeaningfulResult('finderResult', 20, waitMs || 35000);
