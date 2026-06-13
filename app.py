@@ -1,5 +1,136 @@
-
-
+# =============================================================================
+#
+# FIXES SUMMARY:
+# FIX 1:  Removed illegal request._cached_json; /api/agent/frontend_result is now a proper route
+# FIX 2:  /api/agent/frontend_result reads result, cleans it, stores in correct memory slot, calls _decide_next_step
+# FIX 3:  _decide_next_step (find_object) now READS scene_description and scan_result and uses _object_found_in_result
+# FIX 4:  _get_agent_session uses _agent_sessions_lock for thread-safe reads
+# FIX 5:  _cleanup_agent_sessions timeout increased from 600 → 1800 seconds
+# FIX 6:  _object_found_in_result: strong negatives override; positive location words confirm find
+# FIX 7:  find_memory_object always calls _try_visual_confirm_memory when frames+photos present
+# FIX 8:  groq_vision_call raises ValueError on empty response instead of silently returning ""
+# FIX 9:  Groq rate limit retry uses exponential backoff and rotates keys
+# FIX 10: _is_key_available resets failures to 0 and cooldown_until to 0 after cooldown expires
+# FIX 11: save_memory_object returns {"success": False, "error": "..."} if photo_filenames is empty
+# FIX 12: _try_visual_confirm_memory returns early message when memory_entry has no photos
+# FIX 13: ask_user action sets session.state = "waiting" and stores pending_question
+# FIX 14: extract_memory_from_command fallbacks: obj_part defaults to t, loc_part to "unknown location"
+# FIX 15: _get_best_key relies on corrected _is_key_available (covered by FIX 10)
+# FIX 16: /api/agent/start deletes existing session with same goal before creating new one
+# FIX 17: /api/agent/respond handles no_response flag with retry_count; auto-continues after 2 retries
+# FIX 18: _delete_agent_session and _save_agent_session both use _agent_sessions_lock
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# HTML CHANGES REQUIRED IN index.html (implement these alongside this file):
+#
+# HTML-CHANGE-A: speak_then_continue handler in handleAgentResponse():
+#   if (action === 'speak_then_continue') {
+#     const msg = data.voice_response || '';
+#     const backendResult = data.backend_result || '';
+#     const stepName = data.step_name || 'search_memory';
+#     const stepIdx = data.step_index || agentIteration - 1;
+#     agentAddStepCard(agentIteration, stepName, msg || 'Memory check', 'active');
+#     agentSetCurrentAction(msg || 'Processing memory…');
+#     speak(msg, true);
+#     await new Promise(resolve => {
+#       const chk = setInterval(() => {
+#         if (!synth.speaking) { clearInterval(chk); setTimeout(resolve, 400); }
+#       }, 100);
+#       setTimeout(() => { clearInterval(chk); resolve(); }, 8000);
+#     });
+#     agentMarkStepDone(agentIteration);
+#     agentIteration++;
+#     try {
+#       const r = await fetch('/api/agent/frontend_result', {
+#         method: 'POST', headers: {'Content-Type': 'application/json'},
+#         body: JSON.stringify({ session_id: agentSessionId, result: backendResult,
+#           tool: stepName, success: true, step_index: stepIdx })
+#       });
+#       await handleAgentResponse(await r.json(), agentIteration);
+#     } catch(e) {
+#       speak('I had a network problem. Please say My Eye help me to try again.', true);
+#       agentActive = false;
+#       document.body.classList.remove('agent-mode-active');
+#       setTimeout(() => hideAgentDashboard(), 2000);
+#     }
+#     return;
+#   }
+#
+# HTML-CHANGE-B: Replace startAgentVoiceListening() entirely:
+#   let recognitionPausedForAgent = false;
+#   function startAgentVoiceListening(questionId) {
+#     // CRITICAL: Do NOT create a new SpeechRecognition here.
+#     // The main recognition.onresult routes to agentSendUserVoiceResponse()
+#     // when agentWaitingForUser===true and agentCurrentQuestionId is set.
+#     agentShowMicIndicator();
+#     const sub = document.getElementById('agentDashSubtitle');
+#     if (sub) sub.textContent = '🎤 Listening — speak your answer now';
+#     if (recognition && isListening) return; // already running
+#     startListeningVoice();
+#   }
+#
+# HTML-CHANGE-C: Replace speak() to pause mic when agent speaks:
+#   function speak(text, priority = false) {
+#     if (!text || voiceStopped) return;
+#     if (priority) { speakQueue = [text]; synth.cancel(); isSpeaking = false; }
+#     else speakQueue.push(text);
+#     if (agentActive && recognition && isListening) {
+#       recognitionPausedForAgent = true;
+#       try { recognition.stop(); } catch(e) {}
+#       isListening = false;
+#       const ind = document.getElementById('listenInd'); if (ind) ind.classList.remove('active');
+#       const st = document.getElementById('voiceStatusTxt'); if (st) st.textContent = 'Paused by agent';
+#     }
+#     drainQueue();
+#   }
+#
+# HTML-CHANGE-D: Replace drainQueue() to restart mic after agent speech:
+#   function drainQueue() {
+#     if (isSpeaking || speakQueue.length === 0 || voiceStopped) return;
+#     const text = speakQueue.shift();
+#     isSpeaking = true; synth.cancel();
+#     const u = new SpeechSynthesisUtterance(text);
+#     u.rate = 0.92; u.pitch = 1;
+#     u.onend = () => {
+#       isSpeaking = false;
+#       if (agentActive && agentWaitingForUser && recognitionPausedForAgent) {
+#         recognitionPausedForAgent = false;
+#         setTimeout(() => { if (agentWaitingForUser && !isListening) startListeningVoice(); }, 200);
+#       }
+#       setTimeout(drainQueue, 200);
+#     };
+#     u.onerror = () => { isSpeaking = false; setTimeout(drainQueue, 200); };
+#     synth.speak(u); lastSpokenText = text;
+#   }
+#
+# HTML-CHANGE-E: Replace waitForMeaningfulResult() for reliable result polling:
+#   function waitForMeaningfulResult(elementId, minLength = 30, timeoutMs = 30000) {
+#     return new Promise((resolve, reject) => {
+#       const start = Date.now();
+#       const interval = setInterval(() => {
+#         const el = document.getElementById(elementId);
+#         if (el) {
+#           let text = (el.textContent || el.innerText || '').trim();
+#           text = text.replace(/^(Capturing\.\.\.|Analyzing\.\.\.|Loading\.\.\.|Searching memory…|Thinking\.\.\.|Scanning\.\.\.)\s*/i, '').trim();
+#           const isGeneric = /^(No objects detected|No result|Network error|Could not process|I cannot see|Not visible|Click Start|Camera off)$/i.test(text);
+#           if (text.length >= minLength && !isGeneric) { clearInterval(interval); resolve(text); return; }
+#         }
+#         if (Date.now() - start > timeoutMs) {
+#           clearInterval(interval);
+#           reject(new Error(`Timeout waiting for result in #${elementId}`));
+#         }
+#       }, 500);
+#     });
+#   }
+#
+# HTML-CHANGE-F: stopAgentVoiceListening() should only hide indicator (not stop main mic):
+#   function stopAgentVoiceListening() {
+#     _clearAgentListenTimeout();
+#     agentStopMicIndicator();
+#     agentWaitingForUser = false;
+#     // Do NOT stop main recognition — it handles wake word and other features
+#   }
+# =============================================================================
 import base64
 import heapq
 import io
@@ -4233,6 +4364,1076 @@ def cleanup():
 
 atexit.register(cleanup)
 
+# ==== START: INDOOR_NAV_BACKEND ====
+# =============================================================================
+# VisionAssist AI — Indoor Navigation Backend v4 (Fixed)
+#
+# FIXES IN THIS VERSION:
+# FIX-A: turn photos: capture 3 images per turn for accurate comparison
+# FIX-B: verify-photo accepts image arrays, always speaks result,
+#         returns match=true when unsure so navigation never blocks
+# FIX-C: save route stores turn_photo_files as list of 3 filenames
+# FIX-D: get route returns turn_photo_b64_list (list of 3 b64 strings)
+# FIX-E: destination end photos: 3 images stored, compared on arrival
+# FIX-F: verify-photo always returns voice_response that frontend speaks
+# =============================================================================
+
+INDOOR_ROUTES_FILE   = "indoor_routes.json"
+INDOOR_NAV_IMG_DIR   = "indoor_nav_images"
+_indoor_routes_lock  = Lock()
+
+for _d2 in [INDOOR_NAV_IMG_DIR]:
+    if not os.path.exists(_d2):
+        os.makedirs(_d2)
+
+
+# ── Route persistence ─────────────────────────────────────────────────────────
+
+def _load_indoor_routes() -> list:
+    try:
+        with _indoor_routes_lock:
+            if not os.path.exists(INDOOR_ROUTES_FILE):
+                return []
+            with open(INDOOR_ROUTES_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                return data if isinstance(data, list) else []
+    except Exception as e:
+        print(f"[IndoorNav] load error: {e}")
+        return []
+
+
+def _save_indoor_routes(routes: list) -> bool:
+    try:
+        with _indoor_routes_lock:
+            with open(INDOOR_ROUTES_FILE, "w", encoding="utf-8") as f:
+                json.dump(routes, f, indent=2, ensure_ascii=False)
+        return True
+    except Exception as e:
+        print(f"[IndoorNav] save error: {e}")
+        return False
+
+
+def _fuzzy_match_route(routes: list, name: str) -> Optional[dict]:
+    if not name or not routes:
+        return None
+    name_l = name.lower().strip()
+    for r in routes:
+        if r.get("destination", "").lower() == name_l or r.get("name", "").lower() == name_l:
+            return r
+    for r in routes:
+        dest = r.get("destination", "").lower()
+        nm   = r.get("name", "").lower()
+        if name_l in dest or name_l in nm or dest in name_l or nm in name_l:
+            return r
+    name_words = set(name_l.split())
+    best_score, best_route = 0, None
+    for r in routes:
+        cand  = (r.get("destination", "") + " " + r.get("name", "")).lower()
+        score = len(name_words & set(cand.split()))
+        if score > best_score:
+            best_score, best_route = score, r
+    return best_route if best_score > 0 else None
+
+
+def _save_route_image(b64: str, tag: str) -> str:
+    """Save a base64 image, return filename or empty string."""
+    if not b64 or not PIL_AVAILABLE:
+        return ""
+    try:
+        if "," in b64:
+            b64 = b64.split(",")[1]
+        b64 += "=" * (4 - len(b64) % 4)
+        raw     = base64.b64decode(b64)
+        img     = Image.open(io.BytesIO(raw)).convert("RGB")
+        img.thumbnail((640, 480))
+        safe_tag = re.sub(r"[^a-z0-9_]", "_", tag.lower())[:30]
+        fname    = f"{safe_tag}_{str(uuid.uuid4())[:6]}.jpg"
+        fpath    = os.path.join(INDOOR_NAV_IMG_DIR, fname)
+        img.save(fpath, "JPEG", quality=80)
+        return fname
+    except Exception as e:
+        print(f"[IndoorNav] image save error: {e}")
+        return ""
+
+
+def _load_route_image_b64(filename: str) -> str:
+    if not filename:
+        return ""
+    try:
+        fpath = os.path.join(INDOOR_NAV_IMG_DIR, filename)
+        if not os.path.exists(fpath):
+            return ""
+        with open(fpath, "rb") as f:
+            return base64.b64encode(f.read()).decode()
+    except Exception:
+        return ""
+
+
+# ── FIX-A/B: AI image verification — accepts lists of images, always speaks ──
+
+def _verify_images_with_groq(
+    ref_b64_list,      # str or list of str — reference (recorded) images
+    cur_b64_list,      # str or list of str — current camera images
+    context: str,
+    context_type: str = "location"  # "location", "turn", "destination"
+) -> dict:
+    """
+    Compare reference photos vs current camera photos.
+
+    Returns:
+      {
+        "match": bool,
+        "confidence": "high"|"medium"|"low",
+        "skipped": bool,
+        "message": str,   <- always set, always spoken by frontend
+        "voice_response": str
+      }
+
+    Rules (FIX-F):
+    - ALWAYS returns a voice message that the frontend will speak
+    - If confident match → positive confirmation
+    - If confident mismatch → warning but match=True (never blocks navigation)
+    - If unsure / api unavailable → neutral continue message, match=True
+    """
+
+    # Normalise to lists
+    if isinstance(ref_b64_list, str):
+        ref_b64_list = [ref_b64_list] if ref_b64_list else []
+    if isinstance(cur_b64_list, str):
+        cur_b64_list = [cur_b64_list] if cur_b64_list else []
+
+    # Remove empties
+    ref_list = [b for b in ref_b64_list if b and len(b) > 100]
+    cur_list = [b for b in cur_b64_list if b and len(b) > 100]
+
+    # Context-specific messages
+    if context_type == "turn":
+        match_msg    = f"Good. This looks like the correct turn point for {context}."
+        mismatch_msg = (
+            f"Warning: this turn looks different from when I recorded it. "
+            f"Please be careful. Proceeding with the {context} turn now."
+        )
+        unsure_msg   = f"Proceeding with the {context} turn."
+    elif context_type == "destination":
+        match_msg    = (
+            f"You have arrived at the correct destination: {context}. "
+            f"This matches the recorded arrival point."
+        )
+        mismatch_msg = (
+            f"You have arrived at {context}, but the surroundings look a little different "
+            f"from when I recorded this route. You may still be at the right place."
+        )
+        unsure_msg   = f"You have arrived at {context}."
+    else:  # location / start
+        match_msg    = f"Starting point confirmed. You are at the correct location."
+        mismatch_msg = (
+            f"Warning: your current view does not match the saved starting point "
+            f"for {context}. Say My Eye I am at start to override and continue."
+        )
+        unsure_msg   = f"Starting navigation to {context}."
+
+    if not ref_list or not cur_list:
+        return {
+            "match":          True,
+            "confidence":     "low",
+            "skipped":        True,
+            "message":        unsure_msg,
+            "voice_response": unsure_msg,
+        }
+
+    groq_ok = any(
+        _is_key_available(k)
+        for k in [GROQ_API_KEY_1, GROQ_API_KEY_2, GROQ_API_KEY_3]
+        if k
+    )
+    if not groq_ok:
+        return {
+            "match":          True,
+            "confidence":     "low",
+            "skipped":        True,
+            "message":        unsure_msg,
+            "voice_response": unsure_msg,
+        }
+
+    try:
+        def _clean(b):
+            b = b.split(",")[1] if "," in b else b
+            return b
+
+        # Use up to 2 reference images and 2 current images to save Groq quota
+        ref_use = [_clean(b) for b in ref_list[:2]]
+        cur_use = [_clean(b) for b in cur_list[:2]]
+
+        if context_type == "turn":
+            system_msg = (
+                "You are helping a blind person verify a turn point during indoor navigation. "
+                "You will see reference photos (how the location looked when the route was recorded) "
+                "and current photos (what the camera sees now). "
+                "Determine if these appear to be the same physical location or turn point. "
+                "Be lenient with lighting differences and slight angle changes. "
+                "Reply MATCH if same location, NO_MATCH if clearly different. "
+                "One sentence explanation after your verdict."
+            )
+            compare_text = f"Is this the correct turn point for the recorded route ({context})?"
+        elif context_type == "destination":
+            system_msg = (
+                "You are helping a blind person confirm they reached their destination. "
+                "Compare the reference photo (destination as recorded) with current photos. "
+                "Reply MATCH if the person appears to be at the correct destination, "
+                "NO_MATCH if clearly wrong location. "
+                "Be encouraging and clear. One sentence."
+            )
+            compare_text = f"Has the person arrived at the correct destination: {context}?"
+        else:
+            system_msg = (
+                "You are helping a blind person verify they are at the correct starting point "
+                "for an indoor navigation route. "
+                "Compare reference photo with current camera view. "
+                "Reply MATCH if same location, NO_MATCH if clearly different. "
+                "One sentence."
+            )
+            compare_text = f"Is the person at the correct starting point for the route to {context}?"
+
+        content = [{"type": "text", "text": f"Reference photo(s) of '{context}':"}]
+        for b in ref_use:
+            content.append({
+                "type":      "image_url",
+                "image_url": {"url": f"data:image/jpeg;base64,{b}", "detail": "low"}
+            })
+        content.append({"type": "text", "text": "Current camera view(s):"})
+        for b in cur_use:
+            content.append({
+                "type":      "image_url",
+                "image_url": {"url": f"data:image/jpeg;base64,{b}", "detail": "low"}
+            })
+        content.append({"type": "text", "text": compare_text})
+
+        payload = {
+            "model": GROQ_MODEL,
+            "messages": [
+                {"role": "system", "content": system_msg},
+                {"role": "user",   "content": content},
+            ],
+            "max_tokens": 80,
+            "temperature": 0.1,
+        }
+        result = groq_request(payload, priority="high")
+        if result:
+            answer = result["choices"][0]["message"]["content"].strip()
+            answer_up = answer.upper()
+
+            if "NO_MATCH" in answer_up or "NO MATCH" in answer_up:
+                # Clear mismatch — warn but NEVER block navigation (match=True for turns/dest)
+                if context_type in ("turn", "destination"):
+                    return {
+                        "match":          True,  # Don't block — blind person must continue
+                        "confidence":     "high",
+                        "skipped":        False,
+                        "message":        mismatch_msg,
+                        "voice_response": mismatch_msg,
+                    }
+                else:
+                    # For start point only — return actual mismatch so user can override
+                    return {
+                        "match":          False,
+                        "confidence":     "high",
+                        "skipped":        False,
+                        "message":        mismatch_msg,
+                        "voice_response": mismatch_msg,
+                    }
+            elif "MATCH" in answer_up:
+                return {
+                    "match":          True,
+                    "confidence":     "high",
+                    "skipped":        False,
+                    "message":        match_msg,
+                    "voice_response": match_msg,
+                }
+            else:
+                # Ambiguous — always continue
+                return {
+                    "match":          True,
+                    "confidence":     "low",
+                    "skipped":        False,
+                    "message":        unsure_msg,
+                    "voice_response": unsure_msg,
+                }
+
+    except Exception as e:
+        print(f"[IndoorNav] _verify_images error: {e}")
+
+    return {
+        "match":          True,
+        "confidence":     "low",
+        "skipped":        True,
+        "message":        unsure_msg,
+        "voice_response": unsure_msg,
+    }
+
+
+# ── /api/indoor-nav/verify-photo ──────────────────────────────────────────────
+
+@app.route("/api/indoor-nav/verify-photo", methods=["POST"])
+def indoor_nav_verify_photo():
+    """
+    POST /api/indoor-nav/verify-photo
+    Body: {
+      reference_b64:       str | list[str],   <- stored photo(s)
+      current_b64:         str | list[str],   <- live camera photo(s)
+      context:             str,
+      context_type:        "location"|"turn"|"destination"
+    }
+    Returns: { success, match, confidence, skipped, message, voice_response }
+
+    FIX-F: voice_response is ALWAYS set and should be spoken by frontend.
+    For turn/destination: match is always True (never blocks navigation).
+    For start location: match can be False (user can override).
+    """
+    try:
+        data         = request.get_json(silent=True) or {}
+        ref_b64      = data.get("reference_b64") or data.get("reference_b64_list") or ""
+        cur_b64      = data.get("current_b64")   or data.get("current_b64_list")   or ""
+        context      = (data.get("context")      or "destination").strip()
+        context_type = (data.get("context_type") or "location").strip()
+
+        result = _verify_images_with_groq(ref_b64, cur_b64, context, context_type)
+        return jsonify({
+            "success":        True,
+            "match":          result["match"],
+            "confidence":     result.get("confidence", "low"),
+            "skipped":        result.get("skipped", False),
+            "message":        result["message"],
+            "voice_response": result["voice_response"],
+        })
+    except Exception as e:
+        print(f"[IndoorNav] verify_photo error: {e}")
+        fallback_msg = "Proceeding with navigation."
+        return jsonify({
+            "success":        True,
+            "match":          True,
+            "confidence":     "low",
+            "skipped":        True,
+            "message":        fallback_msg,
+            "voice_response": fallback_msg,
+        })
+
+
+# ── /api/indoor-nav/routes/save ───────────────────────────────────────────────
+
+@app.route("/api/indoor-nav/routes/save", methods=["POST"])
+def indoor_nav_save_route():
+    """
+    Save a recorded route.
+
+    FIX-A: turn_photo_b64_list — list of up to 3 base64 images per turn
+    FIX-E: end_image_b64_list  — list of up to 3 base64 images at destination
+
+    Body: {
+      name: str,
+      destination: str,
+      segments: [
+        {
+          type: "straight",
+          duration_ms: int,
+          estimated_steps: int        <- calculated as round(duration_ms/1000*1.4)
+        },
+        {
+          type: "turn",
+          direction: "left"|"right",
+          turn_photo_b64_list: [b64, b64, b64]   <- 3 photos
+        },
+        { type: "destination" }
+      ],
+      total_steps: int,
+      total_duration_ms: int,
+      start_image_b64: str,
+      start_image_b64_list: [b64, b64, b64],    <- preferred: 3 photos
+      end_image_b64: str,
+      end_image_b64_list: [b64, b64, b64]       <- 3 photos at destination
+    }
+    """
+    try:
+        data           = request.get_json(silent=True) or {}
+        name           = (data.get("name")        or "").strip()
+        destination    = (data.get("destination") or name).strip()
+        segments       = data.get("segments", [])
+        total_steps    = int(data.get("total_steps", 0))
+        total_duration = int(data.get("total_duration_ms", 0))
+
+        if not name:
+            return jsonify({
+                "success":        False,
+                "message":        "Route name is required.",
+                "voice_response": "Please say a name for this route.",
+            })
+        if not segments:
+            return jsonify({
+                "success":        False,
+                "message":        "No route segments recorded.",
+                "voice_response": "No steps were recorded. Please walk the route again.",
+            })
+
+        safe_name = re.sub(r"[^a-z0-9_]", "_", name.lower())[:20]
+
+        # FIX-E: Save start photos — prefer list of 3, fall back to single
+        start_b64_list = data.get("start_image_b64_list") or []
+        if not start_b64_list and data.get("start_image_b64"):
+            start_b64_list = [data.get("start_image_b64")]
+        start_img_files = []
+        for i, b64 in enumerate(start_b64_list[:3]):
+            fname = _save_route_image(b64, f"{safe_name}_start_{i}")
+            if fname:
+                start_img_files.append(fname)
+
+        # FIX-E: Save end/destination photos — prefer list of 3
+        end_b64_list = data.get("end_image_b64_list") or []
+        if not end_b64_list and data.get("end_image_b64"):
+            end_b64_list = [data.get("end_image_b64")]
+        end_img_files = []
+        for i, b64 in enumerate(end_b64_list[:3]):
+            fname = _save_route_image(b64, f"{safe_name}_end_{i}")
+            if fname:
+                end_img_files.append(fname)
+
+        # Process segments — FIX-A: save up to 3 turn photos per turn
+        processed_segments = []
+        turn_idx = 0
+        for seg in segments:
+            seg_copy = dict(seg)
+
+            # Remove raw b64 fields before storage
+            single_photo   = seg_copy.pop("turn_photo_b64",      "") or ""
+            list_photos    = seg_copy.pop("turn_photo_b64_list",  []) or []
+
+            if seg_copy.get("type") == "turn":
+                # Build list: prefer list_photos, fall back to single
+                photos_to_save = list_photos[:3] if list_photos else ([single_photo] if single_photo else [])
+                saved_files = []
+                for j, b64 in enumerate(photos_to_save):
+                    fname = _save_route_image(b64, f"{safe_name}_turn{turn_idx}_{j}")
+                    if fname:
+                        saved_files.append(fname)
+                seg_copy["turn_photo_files"] = saved_files  # list of filenames
+                turn_idx += 1
+            else:
+                seg_copy.setdefault("turn_photo_files", [])
+
+            # FIX STEPS: always recalculate to ensure consistency
+            if seg_copy.get("type") == "straight":
+                dur_ms = float(seg_copy.get("duration_ms", 0))
+                dur_s  = dur_ms / 1000.0
+                # Walking speed: 1.4 steps/second
+                calc_steps = max(1, round(dur_s * 1.4))
+                # Only override if the stored value looks wrong (0 or None)
+                stored = seg_copy.get("estimated_steps", 0)
+                if not stored or stored <= 0:
+                    seg_copy["estimated_steps"] = calc_steps
+                else:
+                    # Trust stored value (it was also calculated the same way)
+                    seg_copy["estimated_steps"] = int(stored)
+
+            processed_segments.append(seg_copy)
+
+        # Recalculate total_steps from segments for consistency
+        total_steps_calc = sum(
+            s.get("estimated_steps", 0)
+            for s in processed_segments
+            if s.get("type") == "straight"
+        )
+        if total_steps_calc > 0:
+            total_steps = total_steps_calc
+
+        # Remove existing route with same name
+        routes = _load_indoor_routes()
+        routes = [
+            r for r in routes
+            if r.get("name", "").lower()        != name.lower()
+            and r.get("destination", "").lower() != destination.lower()
+        ]
+
+        new_route = {
+            "id":                str(uuid.uuid4())[:8],
+            "name":              name,
+            "destination":       destination,
+            "segments":          processed_segments,
+            "total_steps":       total_steps,
+            "total_duration_ms": total_duration,
+            # FIX-A/E: store as lists
+            "start_image_files": start_img_files,
+            "end_image_files":   end_img_files,
+            # Legacy single-file fields kept for backwards compat
+            "start_image_file":  start_img_files[0] if start_img_files else "",
+            "end_image_file":    end_img_files[0]   if end_img_files   else "",
+            "created_at":        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        }
+        routes.append(new_route)
+        _save_indoor_routes(routes)
+
+        turns      = [s for s in processed_segments if s.get("type") == "turn"]
+        straights  = [s for s in processed_segments if s.get("type") == "straight"]
+        turn_count = len(turns)
+        seg_count  = len(straights)
+
+        msg = (
+            f"Route to {destination} saved successfully! "
+            f"It has {seg_count} straight segment{'s' if seg_count != 1 else ''} "
+            f"and {turn_count} turn{'s' if turn_count != 1 else ''}. "
+            f"Total estimated {total_steps} steps. "
+            f"Say My Eye go to {destination} to navigate next time."
+        )
+        log_conversation("SYSTEM", f"[IndoorNav] Saved: {name} → {destination} ({total_steps} steps, {turn_count} turns)")
+        return jsonify({
+            "success":        True,
+            "route_id":       new_route["id"],
+            "message":        msg,
+            "voice_response": msg,
+            "turns":          turn_count,
+            "segments":       seg_count,
+            "total_steps":    total_steps,
+        })
+
+    except Exception as e:
+        print(f"[IndoorNav] save_route error: {traceback.format_exc()}")
+        msg = "I could not save the route. Please try recording again."
+        return jsonify({"success": False, "message": msg, "voice_response": msg}), 500
+
+
+# ── /api/indoor-nav/routes/list ───────────────────────────────────────────────
+
+@app.route("/api/indoor-nav/routes/list", methods=["GET"])
+def indoor_nav_list_routes():
+    try:
+        routes  = _load_indoor_routes()
+        summary = []
+        for r in routes:
+            segs  = r.get("segments", [])
+            turns = [s for s in segs if s.get("type") == "turn"]
+            summary.append({
+                "id":              r.get("id", ""),
+                "name":            r.get("name", ""),
+                "destination":     r.get("destination", ""),
+                "total_steps":     r.get("total_steps", 0),
+                "turn_count":      len(turns),
+                "created_at":      r.get("created_at", ""),
+                "has_end_image":   bool(r.get("end_image_files") or r.get("end_image_file")),
+                "has_start_image": bool(r.get("start_image_files") or r.get("start_image_file")),
+            })
+        names = [r["destination"] for r in summary]
+        voice = (
+            f"You have {len(summary)} saved route{'s' if len(summary) != 1 else ''}. "
+            + (f"They go to: {', '.join(names)}." if names
+               else "Record your first route by saying My Eye record route to, then the destination name.")
+        )
+        return jsonify({
+            "success":        True,
+            "routes":         summary,
+            "count":          len(summary),
+            "voice_response": voice,
+        })
+    except Exception as e:
+        msg = "Could not load routes. Please try again."
+        return jsonify({"success": False, "message": msg, "voice_response": msg}), 500
+
+
+# ── /api/indoor-nav/routes/get ────────────────────────────────────────────────
+
+@app.route("/api/indoor-nav/routes/get", methods=["POST"])
+def indoor_nav_get_route():
+    """
+    Returns the full route including all turn photos as base64 lists.
+
+    FIX-A: Returns turn_photo_b64_list: [b64, b64, b64] per turn segment.
+    FIX-E: Returns start_image_b64_list and end_image_b64_list.
+    """
+    try:
+        data  = request.get_json(silent=True) or {}
+        name  = (data.get("name") or "").strip().lower()
+        if not name:
+            return jsonify({
+                "success":        False,
+                "message":        "Route name required.",
+                "voice_response": "Please say the destination name.",
+            })
+
+        routes = _load_indoor_routes()
+        route  = _fuzzy_match_route(routes, name)
+        if not route:
+            all_names = ", ".join([r.get("destination", "") for r in routes]) or "none saved"
+            msg = (
+                f"I do not have a route to {name}. "
+                f"Saved routes are: {all_names}. "
+                f"Say My Eye record route to {name} to create one."
+            )
+            return jsonify({
+                "success":         False,
+                "message":         msg,
+                "voice_response":  msg,
+                "available_routes":[r.get("destination", "") for r in routes],
+            })
+
+        route_out = dict(route)
+
+        # FIX-E: Load start images as list
+        start_files = route.get("start_image_files") or []
+        if not start_files and route.get("start_image_file"):
+            start_files = [route["start_image_file"]]
+        route_out["start_image_b64_list"] = [
+            _load_route_image_b64(f) for f in start_files if f
+        ]
+        # Legacy single image field
+        route_out["start_image_b64"] = route_out["start_image_b64_list"][0] if route_out["start_image_b64_list"] else ""
+
+        # FIX-E: Load end images as list
+        end_files = route.get("end_image_files") or []
+        if not end_files and route.get("end_image_file"):
+            end_files = [route["end_image_file"]]
+        route_out["end_image_b64_list"] = [
+            _load_route_image_b64(f) for f in end_files if f
+        ]
+        route_out["end_image_b64"] = route_out["end_image_b64_list"][0] if route_out["end_image_b64_list"] else ""
+
+        # FIX-A: Load turn photos as lists per segment
+        segments_out = []
+        for seg in route.get("segments", []):
+            seg_copy = dict(seg)
+            if seg_copy.get("type") == "turn":
+                turn_files = seg_copy.get("turn_photo_files") or []
+                if not turn_files and seg_copy.get("turn_photo_file"):
+                    turn_files = [seg_copy["turn_photo_file"]]
+                seg_copy["turn_photo_b64_list"] = [
+                    _load_route_image_b64(f) for f in turn_files if f
+                ]
+                # Legacy single field
+                seg_copy["turn_photo_b64"] = seg_copy["turn_photo_b64_list"][0] if seg_copy["turn_photo_b64_list"] else ""
+            else:
+                seg_copy.setdefault("turn_photo_b64_list", [])
+                seg_copy.setdefault("turn_photo_b64", "")
+            segments_out.append(seg_copy)
+
+        route_out["segments"] = segments_out
+
+        dest = route.get("destination") or route.get("name") or name
+        return jsonify({
+            "success":        True,
+            "route":          route_out,
+            "voice_response": f"Found route to {dest}.",
+        })
+
+    except Exception as e:
+        print(f"[IndoorNav] get_route error: {e}")
+        msg = "Could not retrieve route. Please try again."
+        return jsonify({"success": False, "message": msg, "voice_response": msg}), 500
+
+
+# ── /api/indoor-nav/routes/delete ─────────────────────────────────────────────
+
+@app.route("/api/indoor-nav/routes/delete", methods=["POST"])
+def indoor_nav_delete_route():
+    try:
+        data = request.get_json(silent=True) or {}
+        name = (data.get("name") or "").strip()
+        if not name:
+            return jsonify({
+                "success":        False,
+                "voice_response": "Which route should I delete? Please say the name.",
+            })
+        routes = _load_indoor_routes()
+        before = len(routes)
+        routes = [
+            r for r in routes
+            if r.get("name", "").lower()        != name.lower()
+            and r.get("destination", "").lower() != name.lower()
+        ]
+        if len(routes) == before:
+            msg = f"I could not find a route named {name}."
+            return jsonify({"success": False, "message": msg, "voice_response": msg})
+        _save_indoor_routes(routes)
+        msg = f"Route to {name} has been deleted successfully."
+        log_conversation("SYSTEM", f"[IndoorNav] Deleted: {name}")
+        return jsonify({"success": True, "message": msg, "voice_response": msg})
+    except Exception as e:
+        msg = "Could not delete route. Please try again."
+        return jsonify({"success": False, "message": msg, "voice_response": msg}), 500
+
+
+# ── /api/indoor-nav/verify-location (legacy alias) ───────────────────────────
+
+@app.route("/api/indoor-nav/verify-location", methods=["POST"])
+def indoor_nav_verify_location():
+    try:
+        data          = request.get_json(silent=True) or {}
+        current_b64   = (data.get("current_image_b64")   or "").strip()
+        reference_b64 = (data.get("reference_image_b64") or "").strip()
+        context       = (data.get("context") or "destination").strip()
+        result = _verify_images_with_groq(reference_b64, current_b64, context, "location")
+        return jsonify({"success": True, **result, "voice_response": result["message"]})
+    except Exception as e:
+        fallback_msg = "You have arrived at your destination."
+        return jsonify({
+            "success":        True,
+            "match":          True,
+            "skipped":        True,
+            "voice_response": fallback_msg,
+        })
+
+
+# ── /api/indoor-nav/process-voice-command ────────────────────────────────────
+
+@app.route("/api/indoor-nav/process-voice-command", methods=["POST"])
+def indoor_nav_process_voice():
+    """
+    Interprets a voice command for indoor navigation.
+    Returns: {action, destination?, voice_response}
+
+    Actions: start_recording, turn_left, turn_right, turn_around,
+             destination_reached, cancel_recording,
+             navigate_to, stop_navigation, repeat,
+             confirm_yes, confirm_no, override_start,
+             turned, list_routes, unknown
+    """
+    try:
+        data    = request.get_json(silent=True) or {}
+        command = (data.get("command") or "").strip().lower()
+        mode    = (data.get("mode")    or "idle").strip()
+
+        if not command:
+            return jsonify({
+                "action":         "unknown",
+                "voice_response": "I did not hear a command. Please say it again.",
+            })
+
+        action, destination, voice = "unknown", "", ""
+
+        if re.search(r"\bturn left\b", command):
+            action = "turn_left"
+            voice  = ("Left turn recorded. Continue walking." if mode == "recording"
+                      else "Good. Left turn confirmed.")
+
+        elif re.search(r"\bturn right\b", command):
+            action = "turn_right"
+            voice  = ("Right turn recorded. Continue walking." if mode == "recording"
+                      else "Good. Right turn confirmed.")
+
+        elif re.search(r"\bturn around\b|u.?turn|reverse|180", command):
+            action = "turn_around"
+            voice  = "U-turn recorded."
+
+        elif re.search(r"^(turned|i turned|done turning|turn done|i have turned|i.?ve turned)$", command):
+            action = "turned"
+            voice  = "Good. Continuing."
+
+        elif re.search(
+            r"\bdestination reached\b|arrived|i am here|reached|done walking|i.?m here",
+            command
+        ):
+            action = "destination_reached"
+            voice  = "Destination recorded. Saving route now."
+
+        elif re.search(r"\bcancel\b|\bstop recording\b|\bstart over\b|abort", command):
+            action = "cancel_recording"
+            voice  = "Recording cancelled."
+
+        elif re.search(r"\bstop navigation\b|\bstop nav\b|\bend navigation\b", command):
+            action = "stop_navigation"
+            voice  = "Navigation stopped."
+
+        elif re.search(r"i am at start|i.?m at start|override|start here|begin here", command):
+            action = "override_start"
+            voice  = "Starting point overridden. Beginning navigation now."
+
+        elif re.search(r"\blist routes?\b|\bmy routes?\b|\bsaved routes?\b", command):
+            routes     = _load_indoor_routes()
+            names_list = ", ".join([r.get("destination", "") for r in routes])
+            action     = "list_routes"
+            voice      = (
+                f"You have {len(routes)} route{'s' if len(routes) != 1 else ''}: {names_list}."
+                if routes else "You have no saved routes yet."
+            )
+
+        elif re.search(r"\bgo to\b|\bnavigate to\b|\btake me to\b", command):
+            m = re.search(r"(?:go to|navigate to|take me to)\s+(.+)", command)
+            if m:
+                destination = m.group(1).strip().rstrip(".")
+                action      = "navigate_to"
+                voice       = f"Starting navigation to {destination}."
+            else:
+                action = "navigate_to"
+                voice  = "Where would you like to go?"
+
+        elif re.search(r"\brecord route to\b|\bstart recording to\b|\blearn route to\b", command):
+            m = re.search(r"(?:record route to|start recording to|learn route to)\s+(.+)", command)
+            if m:
+                destination = m.group(1).strip().rstrip(".")
+                action      = "start_recording"
+                voice       = (
+                    f"Recording started to {destination}. "
+                    "Walk slowly along your usual path. "
+                    "Say My Eye turn left or My Eye turn right at each corner. "
+                    "Say My Eye destination reached when you arrive."
+                )
+            else:
+                action = "start_recording"
+                voice  = "Please say the destination. For example: My Eye record route to bathroom."
+
+        elif re.search(r"\brecord route\b|\bstart recording\b|\blearn route\b", command):
+            action = "start_recording"
+            voice  = "Please say the destination. For example: My Eye record route to kitchen."
+
+        elif re.search(r"\brepeat\b|\bsay again\b|\bwhat did you say\b|\brepeat that\b", command):
+            action = "repeat"
+            voice  = "Repeating last instruction."
+
+        elif re.search(r"^(yes|correct|right|okay|confirmed|affirmative|sure|yep|yeah)$", command):
+            action = "confirm_yes"
+            voice  = "Confirmed."
+
+        elif re.search(r"^(no|negative|wrong|not yet|incorrect|nope)$", command):
+            action = "confirm_no"
+            voice  = "Okay, I will wait for you."
+
+        else:
+            # Groq fallback for ambiguous commands
+            try:
+                payload = {
+                    "model": GROQ_MODEL,
+                    "messages": [
+                        {"role": "system", "content": (
+                            "You are a voice command interpreter for indoor navigation for a blind person. "
+                            f"Current mode: {mode}. "
+                            "Map to ONE action: start_recording, turn_left, turn_right, turn_around, "
+                            "destination_reached, cancel_recording, navigate_to, stop_navigation, "
+                            "repeat, confirm_yes, confirm_no, override_start, turned, list_routes, unknown. "
+                            'Return ONLY valid JSON: {"action":"...","destination":"","voice_response":"..."}'
+                        )},
+                        {"role": "user", "content": f'Indoor navigation command: "{command}"'},
+                    ],
+                    "max_tokens": 120,
+                    "temperature": 0.1,
+                }
+                res = groq_request(payload, priority="high")
+                if res:
+                    raw = res["choices"][0]["message"]["content"].strip()
+                    raw = re.sub(r"```json|```", "", raw).strip()
+                    jm  = re.search(r"\{[\s\S]*\}", raw)
+                    if jm:
+                        parsed      = json.loads(jm.group())
+                        action      = parsed.get("action", "unknown")
+                        destination = parsed.get("destination", "")
+                        voice       = parsed.get("voice_response", "")
+            except Exception as ge:
+                print(f"[IndoorNav] Groq voice parse: {ge}")
+
+        if not voice:
+            voice = f"Command {action.replace('_', ' ')} received."
+
+        return jsonify({
+            "action":         action,
+            "destination":    destination,
+            "voice_response": voice,
+        })
+
+    except Exception as e:
+        print(f"[IndoorNav] process_voice error: {traceback.format_exc()}")
+        return jsonify({
+            "action":         "unknown",
+            "voice_response": "I could not understand that command. Please try again.",
+        }), 500
+# ════════════════════════════════════════════════════════════════
+# SEARCH IN app.py FOR THIS LINE:
+#   # ==== END: INDOOR_NAV_BACKEND ====
+# PASTE THIS ENTIRE BLOCK JUST ABOVE THAT LINE
+# ════════════════════════════════════════════════════════════════
+
+@app.route("/api/indoor-nav/live-guide", methods=["POST"])
+def indoor_nav_live_guide():
+    try:
+        data              = request.get_json(silent=True) or {}
+        frame_b64         = (data.get("current_frame_b64") or "").strip()
+        expected_turn     = (data.get("expected_turn")      or "straight").strip().lower()
+        turn_index        = int(data.get("turn_index",      0))
+        turns_total       = int(data.get("turns_total",     0))
+        destination       = (data.get("destination")        or "destination").strip()
+        recorded_duration  = float(data.get("recorded_duration_sec", 0))
+        expected_steps     = int(data.get("expected_steps", 0))
+        last_instruction  = (data.get("last_instruction")   or "").strip().lower()
+        user_interruption = (data.get("user_interruption")  or "").strip()
+        dest_photos_b64   = data.get("dest_photos_b64_list") or []
+
+        # ── Safe fallback: no frame ───────────────────────────────────
+        if not frame_b64 or len(frame_b64) < 100:
+            return jsonify({
+                "instruction": "continue", "voice_response": "continue",
+                "should_advance_turn": False, "detail": "No frame"
+            })
+
+        # ── Resize frame to save Groq quota ──────────────────────────
+        small_b64 = frame_b64.split(",")[1] if "," in frame_b64 else frame_b64
+        if PIL_AVAILABLE:
+            try:
+                raw = base64.b64decode(small_b64 + "=" * (4 - len(small_b64) % 4))
+                img = Image.open(io.BytesIO(raw)).convert("RGB")
+                img.thumbnail((480, 360))
+                buf = io.BytesIO()
+                img.save(buf, format="JPEG", quality=65)
+                small_b64 = base64.b64encode(buf.getvalue()).decode()
+            except Exception:
+                pass
+
+        # ── Memory context: infer if user already completed last action ─
+        memory_hint = ""
+        if last_instruction in ("right", "left"):
+            memory_hint = (
+                f"MEMORY: You last said '{last_instruction}'. "
+                f"If the camera now shows a new corridor or the turn is behind the user, "
+                f"set should_advance_turn=true and say 'continue' or next step count. "
+                f"Do NOT repeat '{last_instruction}' unless the junction is still ahead."
+            )
+        elif last_instruction in ("continue", "straight") or last_instruction.startswith("straight"):
+            memory_hint = (
+                f"MEMORY: You last said '{last_instruction}'. "
+                f"User is walking forward. Estimate remaining steps or confirm turn if visible."
+            )
+
+        # ── Build minimal system prompt ───────────────────────────────
+        system_prompt = (
+            "You are a minimal indoor navigation assistant for a blind person.\n"
+            "Reply ONLY with valid JSON. No markdown. No extra text.\n\n"
+            f"Destination: {destination}\n"
+            f"Next expected action: {expected_turn} (turn {turn_index + 1} of {turns_total})\n"
+            f"This straight segment was recorded in {recorded_duration:.0f} seconds "
+            f"which equals approximately {expected_steps} walking steps.\n"
+            f"For straight segments always say 'straight {expected_steps}' unless obstacle visible.\n"
+            + (f"Last instruction you gave: {last_instruction}\n" if last_instruction else "")
+            + (f"{memory_hint}\n" if memory_hint else "")
+            + (f"User just said (answer briefly, max 12 words): {user_interruption}\n" if user_interruption else "")
+            + "\nRULES — read carefully:\n"
+            "1. NEVER suggest a turn other than the expected_turn above.\n"
+            "   If expected_turn='right' but no right junction visible → instruction='continue'.\n"
+            "   If expected_turn='right' and right junction clearly visible → instruction='right', should_advance_turn=true.\n"
+            "2. If expected_turn='straight': count visible steps to next turn/obstacle (2-8). "
+            "   instruction='straight N' e.g. 'straight 4'. should_advance_turn=false.\n"
+            "3. If expected_turn='destination': "
+            "   If camera matches destination photos or looks like arrival area → instruction='arrived', should_advance_turn=true.\n"
+            "   Else → instruction='continue', should_advance_turn=false.\n"
+            "4. Use MEMORY above: if user already turned, advance and say next step.\n"
+            "5. If user_interruption present → instruction='question', voice_response=answer in ≤12 words, should_advance_turn=false.\n"
+            "6. If obstacle → instruction='obstacle', voice_response=≤6 words e.g. 'chair ahead stop'.\n"
+            "7. voice_response format for straight: '3 words scene description, straight N steps'. Example: 'hallway ahead, straight 4'. For turns: just 'right' or 'left'. For arrived: 'arrived'.\n"
+"8. You MUST use expected_steps if provided. Say exactly that number, do not invent.\n"
+            "8. For 'question' answers only: ≤12 words allowed.\n"
+            "\nReturn ONLY:\n"
+            '{"instruction":"right","voice_response":"right","should_advance_turn":false,"detail":"optional"}'
+        )
+
+        # ── Build user message content ────────────────────────────────
+        user_content = [{"type": "text", "text": "Analyze this live camera frame for indoor navigation."}]
+        if user_interruption:
+            user_content[0]["text"] += f' User asked: "{user_interruption}"'
+
+        user_content.append({
+            "type": "image_url",
+            "image_url": {"url": f"data:image/jpeg;base64,{small_b64}", "detail": "low"}
+        })
+
+        # For destination check — include up to 2 reference photos
+        if expected_turn == "destination" and dest_photos_b64:
+            user_content.insert(1, {"type": "text", "text": "Destination reference photo(s):"})
+            for b64ref in dest_photos_b64[:2]:
+                ref_clean = b64ref.split(",")[1] if "," in b64ref else b64ref
+                user_content.insert(2, {
+                    "type": "image_url",
+                    "image_url": {"url": f"data:image/jpeg;base64,{ref_clean}", "detail": "low"}
+                })
+            user_content.append({"type": "text", "text": "Current camera view (above). Do destination reference photos match?"})
+
+        payload = {
+            "model": GROQ_MODEL,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user",   "content": user_content}
+            ],
+            "max_tokens": 120,
+            "temperature": 0.05,
+        }
+
+        result = groq_request(payload, priority="high", max_retries=2)
+
+        if not result:
+            # API unavailable — safe fallback, never crash navigation
+            fallback = "continue"
+            if expected_turn in ("left", "right"):
+                fallback = "continue"
+            elif expected_turn == "destination":
+                fallback = "continue"
+            return jsonify({
+                "instruction": fallback, "voice_response": fallback,
+                "should_advance_turn": False, "detail": "API unavailable"
+            })
+
+        raw_text = result["choices"][0]["message"]["content"].strip()
+        raw_text = re.sub(r"```json|```", "", raw_text).strip()
+        jm = re.search(r"\{[\s\S]*?\}", raw_text)
+
+        if not jm:
+            # Could not parse — safe fallback
+            return jsonify({
+                "instruction": "continue", "voice_response": "continue",
+                "should_advance_turn": False, "detail": "Parse error"
+            })
+
+        parsed = json.loads(jm.group())
+
+        # ── Validate and sanitise ─────────────────────────────────────
+        valid_instructions = {"right","left","straight","continue","stop","arrived","obstacle","question"}
+        instr  = str(parsed.get("instruction", "continue")).strip().lower()
+        voice  = str(parsed.get("voice_response", instr)).strip()
+        should = bool(parsed.get("should_advance_turn", False))
+        detail = str(parsed.get("detail", "")).strip()
+
+        # Safety: never let AI invent a different turn direction
+        if instr in ("left", "right") and expected_turn not in ("left", "right"):
+            instr  = "continue"
+            voice  = "continue"
+            should = False
+
+        if instr == "right" and expected_turn == "left":
+            instr  = "continue"
+            voice  = "continue"
+            should = False
+
+        if instr == "left" and expected_turn == "right":
+            instr  = "continue"
+            voice  = "continue"
+            should = False
+
+        # Enforce voice brevity: strip to first 6 words for nav instructions
+        if instr != "question":
+            words = voice.split()
+            if len(words) > 6:
+                voice = " ".join(words[:6])
+
+        # If arrived but not at destination segment — prevent false arrival
+        if instr == "arrived" and expected_turn != "destination":
+            instr  = "continue"
+            voice  = "continue"
+            should = False
+
+        log_conversation("SYSTEM", f"[IndoorNav-Live] exp={expected_turn} → {instr} | adv={should} | {detail[:50]}")
+
+        return jsonify({
+            "instruction":         instr,
+            "voice_response":      voice,
+            "should_advance_turn": should,
+            "detail":              detail
+        })
+
+    except Exception as e:
+        print(f"[IndoorNav live-guide] error: {traceback.format_exc()}")
+        return jsonify({
+            "instruction": "continue", "voice_response": "continue",
+            "should_advance_turn": False, "detail": f"Error: {str(e)}"
+        })
+# ==== END: INDOOR_NAV_BACKEND ====
 
 if __name__ == "__main__":
     if ULTRALYTICS_AVAILABLE and CV2_AVAILABLE:
