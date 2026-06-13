@@ -165,6 +165,403 @@ select option{background:var(--bg2)}
 .feat-card h3{font-size:.9rem;font-weight:700;display:flex;align-items:center;gap:7px;margin-bottom:10px}
 .section-title{font-size:.7rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin:20px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--border);}
 .obj-list{list-style:none;max-height:90px;overflow-y:auto;margin-bottom:8px}
+/* ══════════════════════════════════════════════════════════
+   INDOOR NAV — TRANSPARENCY PANEL (Recording + Navigation)
+   ══════════════════════════════════════════════════════════ */
+
+/* Recording Transparency Panel */
+.indoor-rec-panel {
+  background: rgba(255,77,109,.06);
+  border: 1px solid rgba(255,77,109,.3);
+  border-radius: var(--r);
+  padding: 12px;
+  margin-bottom: 8px;
+  display: none;
+}
+.indoor-rec-panel.show { display: block; }
+.indoor-rec-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.indoor-rec-title {
+  font-size: .72rem;
+  color: var(--accent3);
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.indoor-rec-blink {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--accent3);
+  animation: pulse 1s infinite;
+}
+.indoor-rec-dest {
+  font-size: .85rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.indoor-rec-stats {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  font-size: .75rem;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+.indoor-rec-stat-val {
+  font-weight: 800;
+  font-size: 1.1rem;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+.indoor-rec-stat-lbl {
+  font-size: .62rem;
+  color: var(--muted);
+  display: block;
+  margin-top: 1px;
+}
+.indoor-rec-stat-box {
+  background: var(--bg2);
+  border-radius: var(--r-sm);
+  padding: 6px 12px;
+  text-align: center;
+  min-width: 60px;
+}
+
+/* Timer display */
+.indoor-timer-big {
+  font-size: 2.8rem;
+  font-weight: 900;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  font-family: 'JetBrains Mono', monospace;
+}
+.indoor-timer-label {
+  font-size: .65rem;
+  color: var(--muted);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+/* Turn photo strip */
+.indoor-turn-strip {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255,255,255,.06);
+}
+.indoor-turn-thumb-wrap {
+  position: relative;
+  cursor: pointer;
+}
+.indoor-turn-thumb {
+  width: 64px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 2px solid var(--border);
+  transition: border-color .2s;
+  display: block;
+}
+.indoor-turn-thumb:hover { border-color: var(--accent); }
+.indoor-turn-thumb-label {
+  position: absolute;
+  bottom: 2px;
+  left: 0; right: 0;
+  text-align: center;
+  font-size: .55rem;
+  font-weight: 700;
+  color: #fff;
+  background: rgba(0,0,0,.6);
+  border-radius: 0 0 4px 4px;
+  padding: 1px 0;
+  pointer-events: none;
+}
+.indoor-turn-thumb-dir {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .55rem;
+  font-weight: 700;
+  color: #000;
+}
+.indoor-turn-thumb-dir.left  { background: var(--accent2); }
+.indoor-turn-thumb-dir.right { background: var(--gold); }
+.indoor-turn-thumb-dir.dest  { background: var(--green); }
+
+/* Lightbox for turn photos */
+.indoor-lightbox {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.88);
+  z-index: 9999;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+}
+.indoor-lightbox.show { display: flex; }
+.indoor-lightbox img {
+  max-width: 90vw;
+  max-height: 70vh;
+  border-radius: var(--r);
+  border: 2px solid var(--accent);
+  object-fit: contain;
+}
+.indoor-lightbox-caption {
+  font-size: .85rem;
+  color: var(--text);
+  text-align: center;
+  background: var(--glass);
+  padding: 8px 20px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--border);
+}
+.indoor-lightbox-close {
+  padding: 8px 24px;
+  border: none;
+  border-radius: var(--r-pill);
+  background: var(--accent3);
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+  font-size: .85rem;
+}
+
+/* Navigation Transparency Panel */
+.indoor-nav-panel {
+  background: rgba(0,229,200,.05);
+  border: 1px solid rgba(0,229,200,.2);
+  border-radius: var(--r);
+  padding: 12px;
+  margin-bottom: 8px;
+  display: none;
+}
+.indoor-nav-panel.show { display: block; }
+.indoor-nav-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.indoor-nav-title {
+  font-size: .72rem;
+  color: var(--accent);
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.indoor-nav-dest-lbl {
+  font-size: .85rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+.indoor-nav-stats-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.indoor-nav-stat {
+  background: var(--bg2);
+  border-radius: var(--r-sm);
+  padding: 6px 12px;
+  text-align: center;
+  flex: 1;
+  min-width: 60px;
+}
+.indoor-nav-stat-val {
+  font-size: 1.4rem;
+  font-weight: 900;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+  font-family: 'JetBrains Mono', monospace;
+}
+.indoor-nav-stat-lbl {
+  font-size: .6rem;
+  color: var(--muted);
+  letter-spacing: .5px;
+  text-transform: uppercase;
+  margin-top: 1px;
+}
+
+/* Timer countdown bar */
+.indoor-nav-timer-wrap {
+  margin-bottom: 10px;
+}
+.indoor-nav-countdown-num {
+  font-size: 3.2rem;
+  font-weight: 900;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+  font-family: 'JetBrains Mono', monospace;
+  line-height: 1;
+  text-align: center;
+}
+.indoor-nav-countdown-num.urgent { color: var(--accent3); animation: pulse .5s infinite; }
+.indoor-nav-countdown-label {
+  text-align: center;
+  font-size: .62rem;
+  color: var(--muted);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+.indoor-nav-progress {
+  height: 6px;
+  background: var(--bg3);
+  border-radius: 99px;
+  overflow: hidden;
+  margin-top: 6px;
+}
+.indoor-nav-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent2), var(--accent));
+  border-radius: 99px;
+  transition: width .9s linear;
+}
+
+/* Turn sequence visual */
+.indoor-turn-sequence {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+  align-items: center;
+}
+.indoor-turn-seq-item {
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: .68rem;
+  font-weight: 700;
+  border: 1px solid var(--border);
+  background: var(--bg2);
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  transition: all .3s;
+}
+.indoor-turn-seq-item.done {
+  background: rgba(34,197,94,.12);
+  border-color: var(--green);
+  color: var(--green);
+}
+.indoor-turn-seq-item.active {
+  background: rgba(0,229,200,.15);
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: 0 0 10px rgba(0,229,200,.2);
+}
+.indoor-turn-seq-item.upcoming {
+  opacity: .5;
+}
+
+/* Image comparison panel */
+.indoor-compare-panel {
+  display: none;
+  background: var(--bg2);
+  border: 1px solid rgba(108,99,255,.3);
+  border-radius: var(--r);
+  padding: 10px;
+  margin-bottom: 8px;
+}
+.indoor-compare-panel.show { display: block; }
+.indoor-compare-title {
+  font-size: .65rem;
+  color: var(--accent2);
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.indoor-compare-images {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.indoor-compare-col {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.indoor-compare-col-label {
+  font-size: .6rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  text-align: center;
+}
+.indoor-compare-img {
+  width: 100%;
+  height: 80px;
+  object-fit: cover;
+  border-radius: var(--r-sm);
+  border: 2px solid var(--border);
+  display: block;
+  cursor: pointer;
+}
+.indoor-compare-img.match { border-color: var(--green); }
+.indoor-compare-img.nomatch { border-color: var(--accent3); }
+.indoor-compare-result {
+  margin-top: 6px;
+  padding: 6px 10px;
+  border-radius: var(--r-sm);
+  font-size: .75rem;
+  font-weight: 600;
+  text-align: center;
+}
+.indoor-compare-result.match { background: rgba(34,197,94,.12); color: var(--green); border: 1px solid var(--green); }
+.indoor-compare-result.nomatch { background: rgba(255,77,109,.12); color: var(--accent3); border: 1px solid var(--accent3); }
+.indoor-compare-result.checking { background: rgba(240,180,41,.1); color: var(--gold); border: 1px solid var(--gold); }
+
+/* Nav log panel */
+.indoor-nav-log {
+  background: var(--bg1);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 10px;
+  max-height: 140px;
+  overflow-y: auto;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .68rem;
+  line-height: 1.8;
+  display: none;
+  margin-top: 8px;
+}
+.indoor-nav-log.show { display: block; }
+.indoor-log-entry { padding: 1px 0; }
+.indoor-log-entry.ev-turn   { color: var(--accent); }
+.indoor-log-entry.ev-verify { color: var(--accent2); }
+.indoor-log-entry.ev-index  { color: var(--gold); }
+.indoor-log-entry.ev-arrive { color: var(--green); }
+.indoor-log-entry.ev-warn   { color: var(--accent3); }
+.indoor-log-entry.ev-info   { color: var(--muted); }
 .obj-item{padding:5px 10px;margin:3px 0;background:var(--bg2);border-radius:var(--r-sm);border-left:3px solid var(--accent);font-size:.82rem;}
 .indoor-status{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--bg2);border-radius:var(--r-sm);font-size:.85rem;margin-bottom:10px;}
 .memory-card{background:rgba(244,114,182,.06);border:1px solid rgba(244,114,182,.3);border-radius:var(--r);padding:18px;margin-bottom:18px;}
@@ -335,48 +732,224 @@ body.agent-mode-active .agent-wait-cmd{opacity:1!important;pointer-events:auto!i
   </div>
 
   <div class="grid-2">
-    <!-- NAV -->
-    <div class="card">
-      <div class="card-hdr">
-        <h2><i class="fas fa-map-marked-alt" style="color:var(--accent)"></i> Navigation</h2>
-        <span class="badge" id="navModeBadge">🌍 Outdoor</span>
-      </div>
-      <div class="mode-seg">
-        <button class="active" id="outdoorModeBtn" onclick="setNavMode('outdoor')"><i class="fas fa-map"></i> Outdoor</button>
-        <button id="indoorModeBtn" onclick="setNavMode('indoor')"><i class="fas fa-building"></i> Indoor</button>
-      </div>
-      <div class="map-wrap"><div id="map"></div></div>
-      <div id="outdoorCtrl">
-        <div class="input-row">
-          <input type="text" id="endLocation" placeholder="Enter destination…">
-          <button class="btn btn-accent btn-sm" id="findRouteBtn"><i class="fas fa-route"></i> Go</button>
+   <!-- NAV -->
+      <div class="card">
+        <div class="card-hdr">
+          <h2><i class="fas fa-map-marked-alt" style="color:var(--accent)"></i> Navigation</h2>
+          <span class="badge" id="navModeBadge">🌍 Outdoor</span>
         </div>
-      </div>
-      <div id="indoorCtrl" style="display:none">
-        <div class="indoor-status"><span class="status-dot" id="indoorDot"></span><span id="indoorStatusTxt">No indoor map loaded</span></div>
-        <div class="upload-area" id="videoUploadArea" style="border-color:var(--accent);margin-bottom:10px">
-          <i class="fas fa-video" style="color:var(--accent)"></i>
-          <h3>Upload Home Walkthrough Video</h3>
-          <p>Record a walk-through to create indoor map</p>
-          <input type="file" id="videoFileInput" accept="video/*" style="display:none">
-          <div class="prog" id="uploadProg"><div class="prog-fill" id="uploadProgFill"></div></div>
+        <div class="mode-seg">
+          <button class="active" id="outdoorModeBtn" onclick="setNavMode('outdoor')"><i class="fas fa-map"></i> Outdoor</button>
+          <button id="indoorModeBtn" onclick="setNavMode('indoor')"><i class="fas fa-building"></i> Indoor</button>
         </div>
-        <div id="indoorNavCtrl" style="display:none">
-          <div style="background:rgba(0,229,200,.07);padding:12px;border-radius:var(--r-sm);margin-bottom:10px">
-            <div style="font-size:.8rem;color:var(--muted);margin-bottom:4px">Current Room</div>
-            <div id="currentRoom" style="font-size:1.1rem;font-weight:700;color:var(--accent)">Not detected</div>
-            <button class="btn btn-ghost btn-sm" id="detectLocBtn" style="margin-top:8px"><i class="fas fa-crosshairs"></i> Detect Room</button>
-          </div>
-          <select id="destRoom" style="margin-bottom:8px"><option value="">Select destination…</option></select>
-          <button class="btn btn-accent btn-full" id="indoorNavBtn"><i class="fas fa-location-arrow"></i> Navigate</button>
-          <div id="indoorInstr" style="display:none;margin-top:10px">
-            <div class="desc-box">
-              <h4 style="font-size:.82rem;margin-bottom:6px"><i class="fas fa-directions"></i> Instructions</h4>
-              <div id="instrList"></div>
-              <div id="instrTotal" style="margin-top:8px;font-weight:700;color:var(--accent);font-size:.82rem"></div>
-            </div>
+        <div class="map-wrap"><div id="map"></div></div>
+        <div id="outdoorCtrl">
+          <div class="input-row">
+            <input type="text" id="endLocation" placeholder="Enter destination…">
+            <button class="btn btn-accent btn-sm" id="findRouteBtn"><i class="fas fa-route"></i> Go</button>
           </div>
         </div>
+
+        <!-- ════════════ INDOOR NAV ════════════ -->
+<div id="indoorCtrl" style="display:none">
+
+  <!-- Status bar -->
+  <div class="indoor-status" id="indoorNavStatus" style="margin-bottom:8px">
+    <span class="status-dot" id="indoorNavDot"></span>
+    <span id="indoorNavStatusTxt">Say: My Eye record route to [destination]</span>
+  </div>
+
+  <!-- Camera for indoor nav -->
+  <div class="cam-wrap cam-h160" id="indoorCamWrap" style="margin-bottom:8px;display:none">
+    <video id="indoorNavVideo" autoplay muted playsinline></video>
+    <canvas id="indoorNavCanvas" style="display:none"></canvas>
+    <div class="cam-placeholder" id="indoorNavCamPlaceholder">
+      <i class="fas fa-camera"></i><span>Camera loading…</span>
+    </div>
+  </div>
+
+  <!-- ══ RECORDING TRANSPARENCY PANEL ══ -->
+  <div class="indoor-rec-panel" id="indoorRecTransPanel">
+    <div class="indoor-rec-header">
+      <div class="indoor-rec-title">
+        <div class="indoor-rec-blink"></div>
+        Recording Route
+      </div>
+      <div style="font-size:.68rem;color:var(--muted)">Walk normally · speak at turns</div>
+    </div>
+
+    <div class="indoor-rec-dest" id="indoorRecDestLbl">Destination: —</div>
+
+    <!-- Stats row -->
+    <div class="indoor-rec-stats">
+      <div class="indoor-rec-stat-box">
+        <div class="indoor-timer-big" id="indoorRecTimerDisp">0</div>
+        <div class="indoor-timer-label">seconds</div>
+      </div>
+      <div class="indoor-rec-stat-box">
+        <div class="indoor-rec-stat-val" id="indoorRecTurnCount">0</div>
+        <div class="indoor-rec-stat-lbl">Turns</div>
+      </div>
+      <div class="indoor-rec-stat-box">
+        <div class="indoor-rec-stat-val" id="indoorRecTotalTime">0s</div>
+        <div class="indoor-rec-stat-lbl">Total</div>
+      </div>
+      <div class="indoor-rec-stat-box" id="indoorRecLastTurnBox" style="display:none">
+        <div class="indoor-rec-stat-val" id="indoorRecLastDir">—</div>
+        <div class="indoor-rec-stat-lbl">Last turn</div>
+      </div>
+    </div>
+
+    <!-- Turn summary chips (L/R labels) -->
+    <div id="indoorRecTurnChips" style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px;min-height:20px">
+      <span style="font-size:.65rem;color:var(--muted)">Turns will appear here</span>
+    </div>
+
+    <!-- Photo strip — thumbnails of captured turn photos -->
+    <div class="indoor-turn-strip" id="indoorRecPhotoStrip"></div>
+
+    <!-- Recording buttons -->
+    <div class="btn-row" style="margin-top:8px">
+      <button class="btn btn-ghost btn-sm" onclick="indoorRecTurn('left')">
+        <i class="fas fa-arrow-left"></i> Turn Left
+      </button>
+      <button class="btn btn-ghost btn-sm" onclick="indoorRecTurn('right')">
+        <i class="fas fa-arrow-right"></i> Turn Right
+      </button>
+      <button class="btn btn-success btn-sm" onclick="indoorRecFinish()">
+        <i class="fas fa-check"></i> Arrived
+      </button>
+      <button class="btn btn-danger btn-sm" onclick="indoorRecCancel()">
+        <i class="fas fa-times"></i> Cancel
+      </button>
+    </div>
+  </div>
+
+  <!-- ══ NAVIGATION TRANSPARENCY PANEL ══ -->
+  <div class="indoor-nav-panel" id="indoorNavTransPanel">
+    <div class="indoor-nav-header">
+      <div class="indoor-nav-title">
+        <i class="fas fa-location-arrow"></i> Navigating
+      </div>
+      <span style="font-size:.65rem;color:var(--muted)" id="indoorNavIndexLbl">Turn 0 of 0</span>
+    </div>
+
+    <div class="indoor-nav-dest-lbl" id="indoorNavDestLbl">To: —</div>
+
+    <!-- Stats -->
+    <div class="indoor-nav-stats-row">
+      <div class="indoor-nav-stat">
+        <div class="indoor-nav-stat-val" id="indoorNavTurnNumDisp">0</div>
+        <div class="indoor-nav-stat-lbl">Turn</div>
+      </div>
+      <div class="indoor-nav-stat">
+        <div class="indoor-nav-stat-val" id="indoorNavTotalTurns">0</div>
+        <div class="indoor-nav-stat-lbl">Total</div>
+      </div>
+      <div class="indoor-nav-stat">
+        <div class="indoor-nav-stat-val" id="indoorNavSegDurDisp">—</div>
+        <div class="indoor-nav-stat-lbl">Seg sec</div>
+      </div>
+    </div>
+
+    <!-- Countdown timer -->
+    <div class="indoor-nav-timer-wrap">
+      <div class="indoor-nav-countdown-num" id="indoorNavCountdown">—</div>
+      <div class="indoor-nav-countdown-label" id="indoorNavCountdownLabel">waiting</div>
+      <div class="indoor-nav-progress">
+        <div class="indoor-nav-progress-fill" id="indoorNavProgFillNew" style="width:100%"></div>
+      </div>
+    </div>
+
+    <!-- Turn sequence visual — L/R chips with done/active/upcoming states -->
+    <div class="indoor-turn-sequence" id="indoorNavTurnSeq"></div>
+
+    <!-- ══ IMAGE COMPARISON PANEL ══ -->
+    <div class="indoor-compare-panel" id="indoorComparePanel">
+      <div class="indoor-compare-title">
+        <i class="fas fa-images"></i>
+        <span id="indoorCompareTitleTxt">Comparing turn photos</span>
+        <span id="indoorCompareSpinner" style="display:none">⏳</span>
+      </div>
+      <div class="indoor-compare-images">
+        <div class="indoor-compare-col">
+          <div class="indoor-compare-col-label">Stored (recorded)</div>
+          <img id="indoorCompareRefImg" class="indoor-compare-img" src="" alt="Reference" style="display:none">
+          <div id="indoorCompareRefEmpty" style="height:80px;background:var(--bg3);border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center;font-size:.72rem;color:var(--muted)">No photo</div>
+        </div>
+        <div class="indoor-compare-col">
+          <div class="indoor-compare-col-label">Current (camera)</div>
+          <img id="indoorCompareCurImg" class="indoor-compare-img" src="" alt="Current" style="display:none">
+          <div id="indoorCompareCurEmpty" style="height:80px;background:var(--bg3);border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center;font-size:.72rem;color:var(--muted)">Not captured</div>
+        </div>
+      </div>
+      <div class="indoor-compare-result checking" id="indoorCompareResult" style="display:none"></div>
+    </div>
+
+    <!-- Nav log -->
+    <div class="indoor-nav-log" id="indoorNavLog"></div>
+
+    <!-- Nav buttons -->
+    <div class="btn-row" style="margin-top:8px">
+      <button class="btn btn-ghost btn-sm" onclick="indoorNavRepeat()">
+        <i class="fas fa-redo"></i> Repeat
+      </button>
+      <button class="btn btn-success btn-sm" onclick="indoorNavConfirmTurn(true)">
+        <i class="fas fa-check"></i> Turned
+      </button>
+      <button class="btn btn-primary btn-sm" onclick="indoorNavVerifyCurrentTurn()">
+        <i class="fas fa-camera"></i> Verify Turn
+      </button>
+      <button class="btn btn-danger btn-sm" onclick="stopIndoorNavigation()">
+        <i class="fas fa-stop"></i> Stop
+      </button>
+    </div>
+    <button class="btn btn-ghost btn-sm btn-full" style="margin-top:6px;font-size:.72rem" onclick="_indoorToggleLog()">
+      <i class="fas fa-terminal"></i> Toggle Log
+    </button>
+  </div>
+
+  <!-- Saved routes -->
+  <div id="indoorRoutesPanel" style="margin-top:8px">
+    <div style="font-size:.7rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">
+      Saved Routes
+    </div>
+    <div id="indoorRoutesList" style="max-height:140px;overflow-y:auto"></div>
+    <div class="btn-row" style="margin-top:6px">
+      <button class="btn btn-ghost btn-sm" onclick="indoorLoadRoutes()">
+        <i class="fas fa-refresh"></i> Refresh
+      </button>
+    </div>
+  </div>
+
+  <!-- Voice command guide -->
+  <div style="margin-top:10px;background:rgba(108,99,255,.06);border:1px solid rgba(108,99,255,.2);border-radius:var(--r-sm);padding:10px">
+    <div style="font-size:.65rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--accent2);margin-bottom:5px">
+      Indoor Voice Commands
+    </div>
+    <div style="font-size:.72rem;color:var(--muted);line-height:1.9">
+      <b style="color:var(--text)">My Eye record route to bathroom</b> — start recording<br>
+      <b style="color:var(--text)">My Eye turn left / turn right</b> — log a turn<br>
+      <b style="color:var(--text)">My Eye destination reached</b> — finish recording<br>
+      <b style="color:var(--text)">My Eye go to bathroom</b> — start navigation<br>
+      <b style="color:var(--text)">My Eye turned</b> — advance to next segment<br>
+      <b style="color:var(--text)">My Eye verify current turn</b> — compare photo<br>
+      <b style="color:var(--text)">My Eye what is next</b> — next turn info<br>
+      <b style="color:var(--text)">My Eye I don't understand</b> — find your position<br>
+      <b style="color:var(--text)">My Eye stop navigation</b> — stop
+    </div>
+  </div>
+</div>
+<!-- ════════════ END INDOOR NAV ════════════ -->
+
+<!-- LIGHTBOX (outside nav div, inside body) -->
+<div class="indoor-lightbox" id="indoorLightbox" onclick="indoorCloseLightbox()">
+  <img id="indoorLightboxImg" src="" alt="">
+  <div class="indoor-lightbox-caption" id="indoorLightboxCaption"></div>
+  <button class="indoor-lightbox-close" onclick="indoorCloseLightbox()">
+    <i class="fas fa-times"></i> Close
+  </button>
+</div>
       </div>
     </div>
 
@@ -941,7 +1514,8 @@ function speak(text,priority=false){
   if(priority){speakQueue=[text];synth.cancel();isSpeaking=false;}
   else speakQueue.push(text);
   // Pause main mic so agent speech doesn't create a feedback loop
-  if(agentActive&&recognition&&isListening){
+  // Only pause mic for agent, never for indoor navigation speech
+  if(agentActive&&!indoorNav.navigating&&recognition&&isListening){
     recognitionPausedForAgent=true;
     try{recognition.stop();}catch(e){}
     isListening=false;
@@ -1008,6 +1582,9 @@ async function globalStop(){
   FEATURES.forEach(f=>{stopMyEyeLive(f,true);stopMyEyeCamSilent(f);});
   stopCamera(true);stopRagAutoCapture(true);stopReadAutoCapture(true);
   stopMemoryCam(true);stopFindMemoryCam(true);
+  _indoorStopLiveGuide();
+  if(indoorNav.recording){indoorRecCancel();}
+  if(indoorNav.navigating){stopIndoorNavigation();}
   stopVoiceOutput();closeAssistantPanel();assistantActive=false;
   if(agentActive){
     const sid=agentSessionId;
@@ -2779,28 +3356,1532 @@ document.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('agentStartBtn')?.addEventListener('click',startAgentFromInput);
 
     loadMemoryList();
-  setTimeout(() => speak('Vision Assist version 16 ready. All backend and frontend fixes applied. Say My Eye to start, or say My Eye help me to use agent mode.'), 1800);
+    setTimeout(() => speak('Ready.'), 1800);
  
   // ── Always open on the accessibility / wake-orb tab ──
   switchTab(2);
  
 }); 
+// ════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════
+// SEARCH IN index.html FOR THIS EXACT LINE (near bottom of <script>):
+//
+// ════════════════════════════════════════════════════════════════
+// INDOOR NAVIGATION v5 — Timer-Based, Index-Controlled, Transparent
+// ════════════════════════════════════════════════════════════════
 
-window.addEventListener('beforeunload',()=>{
-  if(cameraStream)cameraStream.getTracks().forEach(t=>t.stop());
-  if(ragStream)ragStream.getTracks().forEach(t=>t.stop());
-  if(readStream)readStream.getTracks().forEach(t=>t.stop());
-  if(memoryStream)memoryStream.getTracks().forEach(t=>t.stop());
-  if(findMemoryStream)findMemoryStream.getTracks().forEach(t=>t.stop());
-  Object.values(myStreams).forEach(s=>{if(s)s.getTracks().forEach(t=>t.stop());});
-  if(detectionInterval)clearInterval(detectionInterval);
-  if(ragInterval)clearInterval(ragInterval);if(readInterval)clearInterval(readInterval);
-  Object.values(myTimers).forEach(t=>{if(t)clearTimeout(t);});
-  _clearAgentListenTimeout();
-  if(recognition)try{recognition.stop();}catch(e){}
-  if(wakeRec)try{wakeRec.stop();}catch(e){}
-  if(agentActive&&agentSessionId){fetch('/api/agent/stop',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:agentSessionId})}).catch(()=>{});}
-});
+// ── Constants ────────────────────────────────────────────────────
+const IND_SPEECH_CORRECTION_SEC = 3;  // Deduct from recorded segment (user speech time)
+const IND_MIN_SEGMENT_SEC       = 1;  // Never zero or negative
+
+// ── State object ─────────────────────────────────────────────────
+const indoorNav = {
+  // Recording
+  recording:            false,
+  recDestination:       '',
+  recSegments:          [],
+  recSegStartTime:      0,
+  recStartTime:         0,
+  recStartImageB64List: [],
+  recTurnCount:         0,
+  recTimerInterval:     null,
+  recElapsed:           0,   // live seconds since recording started
+  recSegElapsed:        0,   // live seconds since last turn
+
+  // Navigation
+  navigating:           false,
+  navRoute:             null,
+
+  // Index — single source of truth
+  navIndex:             0,   // which turn is NEXT (0 = before first turn)
+  navTurns:             [],  // [{direction, duration_sec, photos}]
+  navSegments:          [],  // full segments array
+  navDestination:       '',
+  navLastStraightSec:   0,
+
+  // Timer
+  timerInterval:        null,
+  timerSecondsLeft:     0,
+  timerSegmentSec:      0,   // total seconds for current segment
+  timerPhase:           'idle', // 'countdown' | 'idle'
+
+  // Camera
+  camStream:            null,
+  camActive:            false,
+
+  // Log
+  navLog:               [],
+
+  // Misc
+  navWaitingForStartOverride: false,
+  _pendingVerifyMsg:    null,
+};
+
+// ════════════════════════════════════════════════════════════════
+// UTILITY — speak with "after speech" callback
+// ════════════════════════════════════════════════════════════════
+function indoorSpeak(text, onDone) {
+  // Only speak if we have text
+  if (!text) { if (onDone) onDone(); return; }
+  speak(text, true);
+  // Calculate approximate speech duration to call onDone after
+  const wordCount = text.split(' ').length;
+  const approxMs  = Math.max(800, wordCount * 310); // ~310ms per word
+  if (onDone) setTimeout(onDone, approxMs);
+}
+
+function indoorSpeakThenDo(text, onDone) {
+  if (!text) { if (onDone) setTimeout(onDone, 100); return; }
+  speak(text, true);
+  const wordCount = text.split(' ').length;
+  const approxMs  = Math.max(800, wordCount * 310) + 400; // extra buffer
+  setTimeout(() => { if (onDone) onDone(); }, approxMs);
+}
+
+// ════════════════════════════════════════════════════════════════
+// LOG
+// ════════════════════════════════════════════════════════════════
+function indoorLog(msg, type = 'info') {
+  const ts    = new Date().toLocaleTimeString();
+  const entry = { ts, msg, type };
+  indoorNav.navLog.push(entry);
+
+  const el = document.getElementById('indoorNavLog');
+  if (!el) return;
+  const div = document.createElement('div');
+  div.className = 'indoor-log-entry ev-' + type;
+  div.textContent = `[${ts}] ${msg}`;
+  el.appendChild(div);
+  el.scrollTop = el.scrollHeight;
+}
+
+function _indoorToggleLog() {
+  const el = document.getElementById('indoorNavLog');
+  if (!el) return;
+  el.classList.toggle('show');
+}
+
+// ════════════════════════════════════════════════════════════════
+// LIGHTBOX
+// ════════════════════════════════════════════════════════════════
+function indoorOpenLightbox(src, caption) {
+  const lb  = document.getElementById('indoorLightbox');
+  const img = document.getElementById('indoorLightboxImg');
+  const cap = document.getElementById('indoorLightboxCaption');
+  if (!lb || !img) return;
+  img.src = src;
+  if (cap) cap.textContent = caption || '';
+  lb.classList.add('show');
+}
+function indoorCloseLightbox() {
+  const lb = document.getElementById('indoorLightbox');
+  if (lb) lb.classList.remove('show');
+}
+
+// ════════════════════════════════════════════════════════════════
+// CAMERA
+// ════════════════════════════════════════════════════════════════
+async function indoorStartCam() {
+  if (indoorNav.camActive) return;
+  const wrap = document.getElementById('indoorCamWrap');
+  if (wrap) wrap.style.display = 'block';
+  try {
+    indoorNav.camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    const vid = document.getElementById('indoorNavVideo');
+    if (vid) {
+      vid.srcObject = indoorNav.camStream;
+      vid.style.display = 'block';
+      const ph = document.getElementById('indoorNavCamPlaceholder');
+      if (ph) ph.style.display = 'none';
+      await new Promise(res => { vid.onloadedmetadata = () => { vid.play(); res(); }; });
+      for (let i = 0; i < 20; i++) { if (vid.videoWidth > 0) break; await wait(100); }
+    }
+    indoorNav.camActive = true;
+  } catch (e) {
+    console.warn('[IndoorNav] cam error:', e);
+    indoorNav.camActive = false;
+  }
+}
+
+function indoorStopCam() {
+  if (indoorNav.camStream) {
+    indoorNav.camStream.getTracks().forEach(t => t.stop());
+    indoorNav.camStream = null;
+  }
+  const vid = document.getElementById('indoorNavVideo');
+  if (vid) vid.style.display = 'none';
+  const ph = document.getElementById('indoorNavCamPlaceholder');
+  if (ph) ph.style.display = 'flex';
+  const wrap = document.getElementById('indoorCamWrap');
+  if (wrap) wrap.style.display = 'none';
+  indoorNav.camActive = false;
+}
+
+function indoorCaptureFrame() {
+  const vid = document.getElementById('indoorNavVideo');
+  const cvs = document.getElementById('indoorNavCanvas');
+  if (!vid || !cvs || !indoorNav.camActive || !vid.videoWidth) return '';
+  cvs.width  = vid.videoWidth;
+  cvs.height = vid.videoHeight;
+  cvs.getContext('2d').drawImage(vid, 0, 0);
+  return cvs.toDataURL('image/jpeg', 0.80).split(',')[1];
+}
+
+async function indoorCapture3Frames() {
+  const frames = [];
+  for (let i = 0; i < 3; i++) {
+    const f = indoorCaptureFrame();
+    if (f) frames.push(f);
+    if (i < 2) await wait(1000); // 1 second apart
+  }
+  return frames;
+}
+
+// ════════════════════════════════════════════════════════════════
+// UI HELPERS
+// ════════════════════════════════════════════════════════════════
+function indoorSetStatus(text, type = 'idle') {
+  const el  = document.getElementById('indoorNavStatusTxt');
+  const dot = document.getElementById('indoorNavDot');
+  if (el)  el.textContent = text;
+  if (dot) {
+    dot.className = 'status-dot';
+    if (type === 'recording')  dot.classList.add('scanning');
+    if (type === 'navigating') dot.classList.add('captured');
+  }
+}
+
+// Add a turn thumbnail to the recording photo strip
+function indoorAddTurnThumb(b64, direction, turnNumber) {
+  const strip = document.getElementById('indoorRecPhotoStrip');
+  if (!strip) return;
+
+  // Remove placeholder text on first thumb
+  if (strip.children.length === 0 || (strip.children.length === 1 && strip.children[0].tagName !== 'DIV')) {
+    strip.innerHTML = '';
+  }
+  const p = strip.querySelector('span');
+  if (p) strip.innerHTML = '';
+
+  const wrap = document.createElement('div');
+  wrap.className = 'indoor-turn-thumb-wrap';
+
+  const dirSymbol = direction === 'left' ? '←' : direction === 'right' ? '→' : '★';
+  const caption   = direction === 'dest' ? `Destination` : `Turn ${turnNumber} ${direction}`;
+
+  wrap.innerHTML = `
+    <img class="indoor-turn-thumb" src="data:image/jpeg;base64,${b64}" alt="${caption}">
+    <div class="indoor-turn-thumb-label">${caption}</div>
+    <div class="indoor-turn-thumb-dir ${direction}">${dirSymbol}</div>
+  `;
+  wrap.querySelector('img').addEventListener('click', () => {
+    indoorOpenLightbox(`data:image/jpeg;base64,${b64}`, caption);
+  });
+  strip.appendChild(wrap);
+}
+
+// Update turn chips (L1, R2, L3...) in recording panel
+function indoorUpdateRecTurnChips() {
+  const el = document.getElementById('indoorRecTurnChips');
+  if (!el) return;
+  const turns = indoorNav.recSegments.filter(s => s.type === 'turn');
+  if (turns.length === 0) {
+    el.innerHTML = '<span style="font-size:.65rem;color:var(--muted)">Turns will appear here</span>';
+    return;
+  }
+  el.innerHTML = turns.map((t, i) => {
+    const color = t.direction === 'left' ? 'var(--accent2)' : 'var(--gold)';
+    const sym   = t.direction === 'left' ? '←' : '→';
+    return `<span style="background:rgba(255,255,255,.07);border:1px solid ${color};color:${color};padding:2px 8px;border-radius:6px;font-size:.68rem;font-weight:700">${sym} T${i + 1} (${t.duration_sec}s)</span>`;
+  }).join('');
+}
+
+// Build turn sequence chips for navigation panel
+function indoorBuildNavTurnSeq() {
+  const el    = document.getElementById('indoorNavTurnSeq');
+  const turns = indoorNav.navTurns;
+  if (!el || !turns) return;
+  el.innerHTML = turns.map((t, i) => {
+    const sym = t.direction === 'left' ? '← L' : '→ R';
+    return `<span class="indoor-turn-seq-item upcoming" id="indoorSeqItem${i}">${sym} ${t.duration_sec}s</span>`;
+  }).join('<span style="font-size:.6rem;color:var(--muted)">→</span>') +
+    `<span class="indoor-turn-seq-item upcoming" id="indoorSeqItemDest">🏁</span>`;
+}
+
+function indoorUpdateNavTurnSeq() {
+  const turns = indoorNav.navTurns;
+  if (!turns) return;
+  turns.forEach((t, i) => {
+    const el = document.getElementById('indoorSeqItem' + i);
+    if (!el) return;
+    el.classList.remove('done', 'active', 'upcoming');
+    if (i < indoorNav.navIndex)       el.classList.add('done');
+    else if (i === indoorNav.navIndex) el.classList.add('active');
+    else                               el.classList.add('upcoming');
+  });
+  const destEl = document.getElementById('indoorSeqItemDest');
+  if (destEl) {
+    destEl.classList.remove('done', 'active', 'upcoming');
+    if (indoorNav.navIndex >= turns.length) destEl.classList.add('active');
+    else destEl.classList.add('upcoming');
+  }
+}
+
+// Show image comparison panel with ref and current
+function indoorShowCompare(refB64, curB64, statusText, matchState) {
+  const panel = document.getElementById('indoorComparePanel');
+  if (!panel) return;
+  panel.classList.add('show');
+
+  const titleTxt = document.getElementById('indoorCompareTitleTxt');
+  if (titleTxt) titleTxt.textContent = statusText || 'Comparing photos';
+
+  // Reference image
+  const refImg   = document.getElementById('indoorCompareRefImg');
+  const refEmpty = document.getElementById('indoorCompareRefEmpty');
+  if (refB64 && refImg) {
+    refImg.src     = 'data:image/jpeg;base64,' + refB64;
+    refImg.style.display = 'block';
+    refImg.className = 'indoor-compare-img ' + (matchState || '');
+    refImg.onclick   = () => indoorOpenLightbox(refImg.src, 'Stored reference photo');
+    if (refEmpty) refEmpty.style.display = 'none';
+  }
+
+  // Current image
+  const curImg   = document.getElementById('indoorCompareCurImg');
+  const curEmpty = document.getElementById('indoorCompareCurEmpty');
+  if (curB64 && curImg) {
+    curImg.src     = 'data:image/jpeg;base64,' + curB64;
+    curImg.style.display = 'block';
+    curImg.className = 'indoor-compare-img ' + (matchState || '');
+    curImg.onclick   = () => indoorOpenLightbox(curImg.src, 'Current camera photo');
+    if (curEmpty) curEmpty.style.display = 'none';
+  }
+
+  // Result
+  const res = document.getElementById('indoorCompareResult');
+  if (res) {
+    res.style.display = 'block';
+    res.className = 'indoor-compare-result ' + (matchState || 'checking');
+    res.textContent = statusText;
+  }
+  indoorLog('Image compare: ' + statusText, matchState === 'match' ? 'verify' : matchState === 'nomatch' ? 'warn' : 'info');
+}
+
+function indoorHideCompare() {
+  const panel = document.getElementById('indoorComparePanel');
+  if (panel) panel.classList.remove('show');
+}
+
+// ════════════════════════════════════════════════════════════════
+// ROUTES LIST
+// ════════════════════════════════════════════════════════════════
+async function indoorLoadRoutes() {
+  const el = document.getElementById('indoorRoutesList');
+  if (!el) return;
+  el.innerHTML = '<div style="font-size:.75rem;color:var(--muted);padding:4px">Loading…</div>';
+  try {
+    const r = await fetch('/api/indoor-nav/routes/list');
+    const d = await r.json();
+    if (!d.success || d.count === 0) {
+      el.innerHTML = '<div style="font-size:.75rem;color:var(--muted);padding:4px">No routes saved.</div>';
+      return;
+    }
+    el.innerHTML = d.routes.map(rt => `
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;background:var(--bg2);border-radius:var(--r-sm);margin-bottom:5px;border-left:3px solid var(--accent)">
+        <div>
+          <div style="font-size:.82rem;font-weight:700">${esc(rt.destination)}</div>
+          <div style="font-size:.68rem;color:var(--muted)">${rt.turn_count || 0} turns · ${new Date(rt.created_at).toLocaleDateString()}</div>
+        </div>
+        <div style="display:flex;gap:5px">
+          <button class="btn btn-accent btn-sm" onclick="indoorStartNavigation('${esc(rt.destination)}')"><i class="fas fa-location-arrow"></i></button>
+          <button class="btn btn-danger btn-sm" onclick="indoorDeleteRoute('${esc(rt.destination)}')"><i class="fas fa-trash"></i></button>
+        </div>
+      </div>`).join('');
+  } catch (e) {
+    el.innerHTML = '<div style="font-size:.75rem;color:var(--accent3);padding:4px">Error loading routes.</div>';
+  }
+}
+
+async function indoorDeleteRoute(name) {
+  if (!confirm(`Delete route to "${name}"?`)) return;
+  try {
+    const r = await fetch('/api/indoor-nav/routes/delete', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name })
+    });
+    const d = await r.json();
+    speak(d.voice_response || 'Route deleted.', true);
+    indoorLoadRoutes();
+  } catch (e) { toast('Error deleting route', 'error'); }
+}
+
+// ════════════════════════════════════════════════════════════════
+// RECORDING
+// Timer starts ONLY after speech "Recording started" finishes
+// 3 seconds subtracted from each segment (user speech time)
+// ════════════════════════════════════════════════════════════════
+async function indoorStartRecording(destination) {
+  if (!destination || !destination.trim()) { speak('Say the destination name.', true); return; }
+  if (indoorNav.recording)  { speak('Already recording.', true); return; }
+  if (indoorNav.navigating) { speak('Stop navigation first.', true); return; }
+
+  indoorNav.recording            = true;
+  indoorNav.recDestination       = destination.trim();
+  indoorNav.recSegments          = [];
+  indoorNav.recTurnCount         = 0;
+  indoorNav.recElapsed           = 0;
+  indoorNav.recSegElapsed        = 0;
+  indoorNav.recStartImageB64List = [];
+
+  // Show panel BEFORE camera starts
+  const tp = document.getElementById('indoorRecTransPanel');
+  if (tp) tp.classList.add('show');
+  const np = document.getElementById('indoorNavTransPanel');
+  if (np) np.classList.remove('show');
+
+  const destLbl = document.getElementById('indoorRecDestLbl');
+  if (destLbl) destLbl.textContent = `Destination: ${destination}`;
+  const strip = document.getElementById('indoorRecPhotoStrip');
+  if (strip) strip.innerHTML = '<span style="font-size:.65rem;color:var(--muted)">Turns will appear here</span>';
+  const chips = document.getElementById('indoorRecTurnChips');
+  if (chips) chips.innerHTML = '<span style="font-size:.65rem;color:var(--muted)">Turns will appear here</span>';
+
+  await indoorStartCam();
+  await wait(800);
+
+  // Capture 3 start photos silently
+  indoorNav.recStartImageB64List = await indoorCapture3Frames();
+
+  // Add start thumbnail to strip
+  if (indoorNav.recStartImageB64List.length > 0) {
+    indoorAddTurnThumb(indoorNav.recStartImageB64List[0], 'start', 0);
+  }
+
+  // ── KEY: timer starts AFTER speech ends ──
+  indoorSpeakThenDo(`Recording started to ${destination}`, () => {
+    // Now start both timers
+    indoorNav.recStartTime    = Date.now();
+    indoorNav.recSegStartTime = Date.now();
+    if (indoorNav.recTimerInterval) clearInterval(indoorNav.recTimerInterval);
+    indoorNav.recTimerInterval = setInterval(() => {
+      const nowMs         = Date.now();
+      indoorNav.recElapsed    = Math.floor((nowMs - indoorNav.recStartTime)    / 1000);
+      indoorNav.recSegElapsed = Math.floor((nowMs - indoorNav.recSegStartTime) / 1000);
+      const timerEl = document.getElementById('indoorRecTimerDisp');
+      if (timerEl) timerEl.textContent = indoorNav.recSegElapsed;
+      const totalEl = document.getElementById('indoorRecTotalTime');
+      if (totalEl) totalEl.textContent = indoorNav.recElapsed + 's';
+    }, 250); // update 4x/second for smooth display
+    indoorLog(`Recording started to ${destination}`, 'info');
+  });
+
+  indoorSetStatus(`Recording to ${destination}`, 'recording');
+  setModeIndicator('🔴 Recording');
+}
+
+async function indoorRecTurn(direction) {
+  if (!indoorNav.recording) return;
+
+  // Raw elapsed — how many seconds on the segment timer
+  const rawSec = Math.floor((Date.now() - indoorNav.recSegStartTime) / 1000);
+
+  // Subtract 3s for user speech time, minimum 1 second
+  const recordedSec = Math.max(IND_MIN_SEGMENT_SEC, rawSec - IND_SPEECH_CORRECTION_SEC);
+
+  // Capture 3 turn photos (1s apart)
+  const turnPhotoB64List = await indoorCapture3Frames();
+
+  // Store segment
+  indoorNav.recSegments.push({ type: 'straight', duration_sec: recordedSec });
+  indoorNav.recSegments.push({ type: 'turn', direction: direction, turn_photo_b64_list: turnPhotoB64List });
+  indoorNav.recTurnCount++;
+
+  // Reset segment timer
+  indoorNav.recSegStartTime = Date.now();
+  indoorNav.recSegElapsed   = 0;
+
+  // Add thumbnail to strip
+  if (turnPhotoB64List.length > 0) {
+    indoorAddTurnThumb(turnPhotoB64List[0], direction, indoorNav.recTurnCount);
+  }
+
+  // Update chips
+  indoorUpdateRecTurnChips();
+
+  // Update turn count UI
+  const tc = document.getElementById('indoorRecTurnCount');
+  if (tc) tc.textContent = indoorNav.recTurnCount;
+  const lt = document.getElementById('indoorRecLastTurnBox');
+  const ld = document.getElementById('indoorRecLastDir');
+  if (lt) lt.style.display = 'block';
+  if (ld) ld.textContent = direction === 'left' ? '← L' : '→ R';
+
+  // Speak direction once (short)
+  speak(direction, true);
+  indoorLog(`Turn ${indoorNav.recTurnCount} ${direction}: raw ${rawSec}s - 3s = stored ${recordedSec}s`, 'turn');
+}
+
+async function indoorRecFinish() {
+  if (!indoorNav.recording) return;
+
+  const rawSec      = Math.floor((Date.now() - indoorNav.recSegStartTime) / 1000);
+  const recordedSec = Math.max(IND_MIN_SEGMENT_SEC, rawSec - IND_SPEECH_CORRECTION_SEC);
+
+  speak('Saving', true);
+  await wait(400);
+
+  // Capture destination photos
+  const endImageB64List = await indoorCapture3Frames();
+
+  // Add destination thumbnail
+  if (endImageB64List.length > 0) {
+    indoorAddTurnThumb(endImageB64List[0], 'dest', indoorNav.recTurnCount + 1);
+  }
+
+  indoorNav.recSegments.push({ type: 'straight', duration_sec: recordedSec });
+  indoorNav.recSegments.push({ type: 'destination' });
+
+  const totalDurationMs = Date.now() - indoorNav.recStartTime;
+
+  // Stop timer
+  if (indoorNav.recTimerInterval) { clearInterval(indoorNav.recTimerInterval); indoorNav.recTimerInterval = null; }
+
+  // Calculate total steps from stored seconds
+  const totalSec   = indoorNav.recSegments.filter(s => s.type === 'straight').reduce((a, s) => a + (s.duration_sec || 0), 0);
+  const totalSteps = Math.round(totalSec * 1.4);
+
+  try {
+    const r = await fetch('/api/indoor-nav/routes/save', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name:                 indoorNav.recDestination,
+        destination:          indoorNav.recDestination,
+        segments:             indoorNav.recSegments,
+        total_steps:          totalSteps,
+        total_duration_ms:    totalDurationMs,
+        start_image_b64_list: indoorNav.recStartImageB64List,
+        end_image_b64_list:   endImageB64List,
+      })
+    });
+    const d = await r.json();
+    speak('Route saved. ' + (d.voice_response || ''), true);
+    toast(`Saved: ${indoorNav.recDestination}`, 'success');
+    indoorLog(`Route saved: ${indoorNav.recDestination} — ${indoorNav.recTurnCount} turns, ${totalSec}s total`, 'arrive');
+  } catch (e) {
+    speak('Save failed. Please try again.', true);
+    toast('Save failed', 'error');
+  }
+
+  // Reset recording state
+  indoorNav.recording            = false;
+  indoorNav.recSegments          = [];
+  indoorNav.recTurnCount         = 0;
+  indoorNav.recStartImageB64List = [];
+
+  const tp = document.getElementById('indoorRecTransPanel');
+  if (tp) tp.classList.remove('show');
+  indoorStopCam();
+  indoorLoadRoutes();
+  setModeIndicator('System Ready');
+  indoorSetStatus('Say: My Eye go to [destination]');
+}
+
+function indoorRecCancel() {
+  if (indoorNav.recTimerInterval) { clearInterval(indoorNav.recTimerInterval); indoorNav.recTimerInterval = null; }
+  indoorNav.recording            = false;
+  indoorNav.recSegments          = [];
+  indoorNav.recTurnCount         = 0;
+  indoorNav.recStartImageB64List = [];
+
+  const tp = document.getElementById('indoorRecTransPanel');
+  if (tp) tp.classList.remove('show');
+  indoorStopCam();
+  speak('Recording cancelled.', true);
+  indoorSetStatus('Say: My Eye record route to [destination]');
+  setModeIndicator('System Ready');
+  indoorLog('Recording cancelled', 'warn');
+}
+
+// ════════════════════════════════════════════════════════════════
+// NAVIGATION TIMER — The core of navigation
+// Countdown per segment, speaks direction TWICE when zero
+// SILENT during counting
+// ════════════════════════════════════════════════════════════════
+function _indoorStopTimer() {
+  if (indoorNav.timerInterval) { clearInterval(indoorNav.timerInterval); indoorNav.timerInterval = null; }
+  indoorNav.timerPhase = 'idle';
+}
+
+// Starts countdown for the segment at navIndex
+// Calls onZero when countdown reaches 0 (speaks direction twice)
+
+function _indoorStartSegmentTimer() {
+  _indoorStopTimer();
+ 
+  const idx   = indoorNav.navIndex;
+  const turns = indoorNav.navTurns;
+  let segSec, isLastSegment, direction;
+ 
+  if (idx < turns.length) {
+    segSec        = turns[idx].duration_sec;
+    direction     = turns[idx].direction;
+    isLastSegment = false;
+  } else {
+    segSec        = indoorNav.navLastStraightSec;
+    direction     = 'destination';
+    isLastSegment = true;
+  }
+ 
+  segSec = Math.max(IND_MIN_SEGMENT_SEC, segSec);
+ 
+  indoorNav.timerSegmentSec  = segSec;
+  indoorNav.timerSecondsLeft = segSec;
+  indoorNav.timerPhase       = 'countdown';
+ 
+  _indoorUpdateTimerUI();
+ 
+  // Update stat displays
+  const indexLbl = document.getElementById('indoorNavIndexLbl');
+  if (indexLbl) indexLbl.textContent = `Turn ${idx} of ${turns.length}`;
+  const turnNum = document.getElementById('indoorNavTurnNumDisp');
+  if (turnNum) turnNum.textContent = idx;
+  const segDur = document.getElementById('indoorNavSegDurDisp');
+  if (segDur) segDur.textContent = segSec + 's';
+ 
+  indoorUpdateNavTurnSeq();
+  indoorLog(`Segment timer: index=${idx} dir=${direction} ${segSec}s`, 'info');
+ 
+  // Announcement text — spoken BEFORE timer starts ticking
+  // FIX 1: Announce UPCOMING TURN direction, not the straight walk
+  let announcement = '';
+  if (isLastSegment) {
+    announcement = `Walk straight,${segSec} seconds to ${indoorNav.navDestination}`;
+  } else if (idx === 0) {
+    const firstDir = turns[0] ? turns[0].direction : '';
+    announcement = `${firstDir.charAt(0).toUpperCase() + firstDir.slice(1)} after ${segSec} seconds`;
+  } else {
+    const upcomingDir = turns[idx] ? turns[idx].direction : '';
+    announcement = `${upcomingDir.charAt(0).toUpperCase() + upcomingDir.slice(1)} after ${segSec} seconds`;
+  }
+ 
+  // Timer starts AFTER announcement speech ends
+  indoorSpeakThenDo(announcement, () => {
+    if (!indoorNav.navigating) return; // guard: navigation may have stopped during speech
+ 
+    indoorNav.timerInterval = setInterval(() => {
+      if (!indoorNav.navigating || indoorNav.timerPhase !== 'countdown') {
+        _indoorStopTimer(); return;
+      }
+ 
+      indoorNav.timerSecondsLeft--;
+      _indoorUpdateTimerUI();
+ 
+      if (indoorNav.timerSecondsLeft <= 0) {
+        _indoorStopTimer();
+ 
+        if (isLastSegment) {
+          // FIX 2: No auto-arrival. Prompt user to confirm.
+          // FIX 4: Log the event.
+          // FIX 5: Navigation does NOT stop automatically.
+          indoorLog(`Last segment timer zero — prompting user to confirm destination`, 'info');
+          const confirmMsg = `You should be near ${indoorNav.navDestination}. Say My Eye confirm destination to verify with camera, or say My Eye arrived to stop navigation.`;
+          speak(confirmMsg, true);
+        } else {
+          // ── FIX #1: speak direction TWICE, then set phase to 'waiting' ──
+          speak(`${direction} ${direction}`, true);
+          indoorLog(`Timer zero: "${direction} ${direction}" — waiting for "turned"`, 'turn');
+ 
+          // ── FIX #3: enter 'waiting' phase with clear UI ──
+          indoorNav.timerPhase = 'waiting';
+          _indoorShowWaitingForTurn(direction);
+        }
+      }
+    }, 1000);
+  });
+}
+
+function _indoorShowWaitingForTurn(direction) {
+  const cd = document.getElementById('indoorNavCountdown');
+  if (cd) {
+    cd.textContent = direction === 'left' ? '← ←' : '→ →';
+    cd.classList.remove('urgent');
+    cd.style.fontSize = '1.8rem';
+    cd.style.color = 'var(--gold)';
+  }
+  const lbl = document.getElementById('indoorNavCountdownLabel');
+  if (lbl) lbl.textContent = `say "my eye turned" to continue`;
+  const pf = document.getElementById('indoorNavProgFillNew');
+  if (pf) pf.style.width = '0%';
+}
+ 
+function _indoorClearWaitingState() {
+  const cd = document.getElementById('indoorNavCountdown');
+  if (cd) {
+    cd.style.fontSize = '';
+    cd.style.color = '';
+  }
+}
+function _indoorUpdateTimerUI() {
+  const sec = indoorNav.timerSecondsLeft;
+  const tot = indoorNav.timerSegmentSec;
+  const pct = tot > 0 ? (sec / tot) * 100 : 100;
+ 
+  const cd = document.getElementById('indoorNavCountdown');
+  if (cd) {
+    cd.textContent = sec >= 0 ? sec : 0;
+    cd.classList.toggle('urgent', sec <= 3 && sec >= 0);
+    // Reset any waiting-state styling
+    cd.style.fontSize = '';
+    cd.style.color = '';
+  }
+  const lbl = document.getElementById('indoorNavCountdownLabel');
+  if (lbl) {
+    const idx   = indoorNav.navIndex;
+    const turns = indoorNav.navTurns;
+    const isLast = idx >= turns.length;
+    if (isLast) lbl.textContent = 'seconds to destination';
+    else lbl.textContent = `seconds → ${turns[idx] ? turns[idx].direction : ''}`;
+  }
+  const pf = document.getElementById('indoorNavProgFillNew');
+  if (pf) pf.style.width = Math.max(0, pct) + '%';
+}
+
+// ════════════════════════════════════════════════════════════════
+// NAVIGATION ENTRY POINT
+// ════════════════════════════════════════════════════════════════
+async function indoorStartNavigation(destination) {
+  if (indoorNav.recording)  { speak('Recording in progress. Say cancel recording first.', true); return; }
+  if (indoorNav.navigating) { speak('Navigation already running. Say stop navigation first.', true); return; }
+  if (!destination || !destination.trim()) { speak('Please say the destination name.', true); return; }
+
+  speak(`Loading route to ${destination}.`, true);
+  try {
+    const r = await fetch('/api/indoor-nav/routes/get', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: destination.trim().toLowerCase() })
+    });
+    const d = await r.json();
+    if (!d.success || !d.route) {
+      speak(d.voice_response || `No route to ${destination}. Please record it first.`, true);
+      return;
+    }
+    await _indoorBeginNavigation(d.route);
+  } catch (e) {
+    speak('Could not load route. Check your connection.', true);
+  }
+}
+// SEARCH: async function _indoorBeginNavigation(route) {
+// REPLACE entire function until the closing } before // INDEX MANAGEMENT
+
+async function _indoorBeginNavigation(route) {
+  const dest     = route.destination || route.name;
+  const segments = route.segments || [];
+
+  const turns = [];
+  for (let i = 0; i < segments.length; i++) {
+    if (segments[i].type === 'turn') {
+      const prevStraight = (i > 0 && segments[i - 1].type === 'straight') ? segments[i - 1] : null;
+      const durSec       = prevStraight ? Math.round(prevStraight.duration_sec || 0) : 1;
+      turns.push({
+        direction:           segments[i].direction,
+        duration_sec:        Math.max(IND_MIN_SEGMENT_SEC, durSec),
+        turn_photo_b64_list: segments[i].turn_photo_b64_list || [],
+      });
+    }
+  }
+
+  const lastStraight = [...segments].reverse().find(s => s.type === 'straight');
+  const lastDurSec   = lastStraight ? Math.max(IND_MIN_SEGMENT_SEC, Math.round(lastStraight.duration_sec || 1)) : 1;
+  indoorLog(`DEBUG: Last straight = ${lastDurSec}s`, 'info');
+
+  indoorNav.navigating        = true;
+  indoorNav.navRoute          = route;
+  indoorNav.navDestination    = dest;
+  indoorNav.navTurns          = turns;
+  indoorNav.navSegments       = segments;
+  indoorNav.navIndex          = 0;
+  indoorNav.navLastStraightSec = lastDurSec;
+  indoorNav.navLog             = [];
+  indoorNav.navWaitingForStartOverride = false;
+
+  const np = document.getElementById('indoorNavTransPanel');
+  const rp = document.getElementById('indoorRecTransPanel');
+  if (np) np.classList.add('show');
+  if (rp) rp.classList.remove('show');
+
+  const destLbl  = document.getElementById('indoorNavDestLbl');
+  if (destLbl)   destLbl.textContent = `To: ${dest}`;
+  const totalLbl = document.getElementById('indoorNavTotalTurns');
+  if (totalLbl)  totalLbl.textContent = turns.length;
+  const navLog   = document.getElementById('indoorNavLog');
+  if (navLog)    { navLog.innerHTML = ''; navLog.classList.add('show'); }
+
+  indoorBuildNavTurnSeq();
+  await indoorStartCam();
+  await wait(1000);
+
+  indoorSetStatus(`Navigating to ${dest}`, 'navigating');
+  setModeIndicator(`🧭 To ${dest}`);
+  indoorLog(`Navigation started to ${dest} — ${turns.length} turns`, 'info');
+
+  // ── START POINT VERIFICATION ──────────────────────────────────────────────
+  // Same logic as before: check, speak AI result, if mismatch wait for override
+  // but ALWAYS continue navigation regardless
+  const startRefList = route.start_image_b64_list || (route.start_image_b64 ? [route.start_image_b64] : []);
+  indoorLog(`Start verify: refPhotos=${startRefList.length} camActive=${indoorNav.camActive}`, 'verify');
+
+  if (startRefList.length > 0 && indoorNav.camActive) {
+    speak('Checking starting point.', true);
+    await wait(1200);
+
+    const currentFrames = await indoorCapture3Frames();
+    indoorLog(`Start verify: captured ${currentFrames.length} frames`, 'verify');
+
+    if (currentFrames.length > 0) {
+      // Show comparison UI immediately
+      indoorShowCompare(startRefList[0], currentFrames[0], 'Checking start point…', 'checking');
+
+      try {
+        const vr = await fetch('/api/indoor-nav/verify-photo', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            reference_b64: startRefList,
+            current_b64:   currentFrames,
+            context:       dest,
+            context_type:  'location'
+          })
+        });
+        const vd = await vr.json();
+
+        // ── CRITICAL: speak EXACTLY what the AI returned, nothing else ──
+        const aiMessage  = vd.voice_response || vd.message || `Starting navigation to ${dest}.`;
+        const matchState = (vd.match && !vd.skipped) ? 'match' : 'nomatch';
+        indoorShowCompare(startRefList[0], currentFrames[0], aiMessage, matchState);
+        speak(aiMessage, true);
+        indoorLog(`Start verify: ${matchState} confidence=${vd.confidence} msg="${aiMessage}"`, 'verify');
+
+        if (!vd.match && !vd.skipped) {
+          // Mismatch — warn user and wait up to 10s for "I am at start" override
+          // Navigation WILL continue regardless after timeout
+          indoorNav.navWaitingForStartOverride = true;
+          indoorLog(`Start verify: mismatch — waiting 10s for user override or auto-continue`, 'warn');
+          await new Promise(resolve => {
+            const chk = setInterval(() => {
+              if (!indoorNav.navWaitingForStartOverride) { clearInterval(chk); resolve(); }
+            }, 300);
+            setTimeout(() => { clearInterval(chk); indoorNav.navWaitingForStartOverride = false; resolve(); }, 10000);
+          });
+        } else {
+          // Match or skipped — brief pause then continue
+          await wait(1000);
+        }
+
+      } catch (e) {
+        // API error — speak fallback and continue
+        const fallback = `Starting navigation to ${dest}.`;
+        speak(fallback, true);
+        indoorLog(`Start verify: fetch error ${e.message} — continuing`, 'warn');
+        await wait(800);
+      }
+    } else {
+      // Camera captured nothing — skip verification, speak and continue
+      speak(`Starting navigation to ${dest}.`, true);
+      await wait(800);
+    }
+  } else {
+    // No stored start photos or camera off — just announce and go
+    speak(`Starting navigation to ${dest}.`, true);
+    await wait(1200);
+  }
+
+  // Hide compare panel after start check
+  setTimeout(() => indoorHideCompare(), 4000);
+
+  // Start first segment timer — always reached, verification never blocks
+  if (indoorNav.navigating) {
+    _indoorStartSegmentTimer();
+  }
+}
+
+// ════════════════════════════════════════════════════════════════
+// INDEX MANAGEMENT — every index change MUST restart timer
+// ════════════════════════════════════════════════════════════════
+function _indoorSetIndex(newIndex, reason) {
+  const oldIndex = indoorNav.navIndex;
+  indoorNav.navIndex = Math.max(0, Math.min(newIndex, indoorNav.navTurns.length));
+  indoorLog(`Index: ${oldIndex} → ${indoorNav.navIndex} (${reason})`, 'index');
+ 
+  // Update index display
+  const indexLbl = document.getElementById('indoorNavIndexLbl');
+  if (indexLbl) indexLbl.textContent = `Turn ${indoorNav.navIndex} of ${indoorNav.navTurns.length}`;
+  const turnNum = document.getElementById('indoorNavTurnNumDisp');
+  if (turnNum) turnNum.textContent = indoorNav.navIndex;
+ 
+  indoorUpdateNavTurnSeq();
+ 
+  // ── FIX #2: always restart timer cleanly — no callback parameter ──
+  // Timer runs itself via setInterval and manages its own completion
+  if (indoorNav.navigating && indoorNav.navIndex <= indoorNav.navTurns.length) {
+    _indoorStartSegmentTimer();
+    // NOTE: navIndex === turns.length means "last straight to destination"
+    // This is NOT arrival. Arrival only happens via confirmDestination or "My Eye arrived".
+  }
+}
+// ════════════════════════════════════════════════════════════════
+// USER COMMANDS DURING NAVIGATION
+// ════════════════════════════════════════════════════════════════
+
+// "My Eye turned" — user completed a turn, advance index
+
+function indoorNavUserTurned() {
+  if (!indoorNav.navigating) return;
+ 
+  // ── FIX #4 + #8: only accept "turned" when timer is done ──
+  if (indoorNav.timerPhase === 'countdown') {
+    // Timer still running — warn user, do not advance
+    speak('Please wait for the countdown to finish.', true);
+    indoorLog('"turned" rejected — timer still running', 'warn');
+    return;
+  }
+ 
+  const idx   = indoorNav.navIndex;
+  const turns = indoorNav.navTurns;
+ 
+  if (idx >= turns.length) {
+    speak('All turns done. Walk to destination.', true);
+    return;
+  }
+ 
+  const curr = turns[idx];
+  _indoorClearWaitingState();
+ 
+  // ── FIX #2: _indoorSetIndex restarts timer with no stale callback ──
+  _indoorSetIndex(idx + 1, 'user said turned');
+ 
+  // Confirm what's next (brief only)
+  const next = indoorNav.navTurns[indoorNav.navIndex];
+  if (!next) {
+    // No more turns — last segment timer already started by _indoorSetIndex
+    // Just let it run silently
+  }
+}
+ 
+
+// "My Eye repeat" — only current pending turn direction + duration
+function indoorNavRepeat() {
+  if (!indoorNav.navigating) {
+    speak('Navigation is not active.', true); return;
+  }
+  const idx   = indoorNav.navIndex;
+  const turns = indoorNav.navTurns;
+ 
+  if (indoorNav.timerPhase === 'waiting') {
+    // Timer finished, waiting for "turned"
+    const dir = idx < turns.length ? turns[idx].direction : '';
+    speak(`${dir} ${dir} — say turned to continue`, true);
+    return;
+  }
+ 
+  // ── FIX #6: use live remaining if counting, full duration if idle ──
+  const sec = indoorNav.timerPhase === 'countdown'
+    ? indoorNav.timerSecondsLeft
+    : (idx < turns.length ? turns[idx].duration_sec : indoorNav.navLastStraightSec);
+ 
+  if (idx < turns.length) {
+    speak(`${turns[idx].direction} turn, ${sec} seconds`, true);
+  } else {
+    speak(`${sec} seconds to ${indoorNav.navDestination}`, true);
+  }
+}
+
+// "My Eye what is next" — next turn after current, advance index
+function indoorNavWhatIsNext() {
+  if (!indoorNav.navigating) return;
+  const idx     = indoorNav.navIndex;
+  const turns   = indoorNav.navTurns;
+  // ── FIX #5: do NOT advance index here — just speak info ──
+  const nextIdx = idx + 1;
+ 
+  if (idx >= turns.length) {
+    // Already on last segment
+    const sec = indoorNav.timerSecondsLeft;
+    speak(`Walk straight, ${sec} seconds to ${indoorNav.navDestination}.`, true);
+    return;
+  }
+ 
+  const curr = turns[idx];
+  speak(`Current: ${curr.direction} turn in ${indoorNav.timerSecondsLeft} seconds.`, true);
+ 
+  if (nextIdx < turns.length) {
+    const next = turns[nextIdx];
+    setTimeout(() => {
+      speak(`After that: ${next.direction} turn, ${next.duration_sec} seconds.`, true);
+    }, 2000);
+  } else {
+    setTimeout(() => {
+      speak(`Then walk to ${indoorNav.navDestination}.`, true);
+    }, 2000);
+  }
+  // ── FIX #5: index NOT incremented ──
+}
+
+// "My Eye repeat directions" — full route remaining
+function indoorNavRepeatAll() {
+  const idx   = indoorNav.navIndex;
+  const turns = indoorNav.navTurns;
+  const dest  = indoorNav.navDestination;
+  if (!turns || turns.length === 0) { speak(`Walk straight to ${dest}.`, true); return; }
+  const remaining = turns.slice(idx);
+  if (remaining.length === 0) {
+    speak(`All turns done. Walk ${indoorNav.navLastStraightSec} seconds to ${dest}.`, true); return;
+  }
+  const parts = remaining.map((t, i) => `turn ${idx + i + 1}: ${t.direction} after ${t.duration_sec} seconds`);
+  speak(`From here: ${parts.join(', then ')}, then walk to ${dest}.`, true);
+}
+
+// "My Eye remaining path"
+function indoorNavRemainingPath() {
+  indoorNavRepeatAll();
+}
+
+// "My Eye verify current turn" — capture 3 frames, compare, show in UI
+// NO auto-speak of result — only shows in UI and speaks once
+// SEARCH: async function indoorNavVerifyCurrentTurn()
+// REPLACE: entire function (ends before // "My Eye confirm destination")
+
+// SEARCH: async function indoorNavVerifyCurrentTurn()
+// REPLACE entire function until // "My Eye confirm destination"
+
+async function indoorNavVerifyCurrentTurn() {
+  if (!indoorNav.navigating) return;
+  const idx   = indoorNav.navIndex;
+  const turns = indoorNav.navTurns;
+  if (idx >= turns.length) { await indoorNavConfirmDestination(); return; }
+
+  speak('Verifying.', true);
+  indoorLog(`Verify turn ${idx + 1}: navIndex=${idx} direction=${turns[idx].direction}`, 'verify');
+
+  const refPhotos = turns[idx].turn_photo_b64_list || [];
+  indoorLog(`Verify turn ${idx + 1}: refPhotos=${refPhotos.length}`, 'verify');
+
+  if (refPhotos.length === 0) {
+    speak('No reference photo was saved for this turn.', true);
+    indoorLog(`Verify turn ${idx + 1}: no photos stored`, 'warn');
+    return;
+  }
+
+  const spinner = document.getElementById('indoorCompareSpinner');
+  if (spinner) spinner.style.display = 'inline';
+  indoorShowCompare(refPhotos[0], '', 'Capturing current view…', 'checking');
+
+  if (!indoorNav.camActive) {
+    await indoorStartCam();
+    await wait(1500);
+  }
+
+  const currentFrames = await indoorCapture3Frames();
+  indoorLog(`Verify turn ${idx + 1}: captured ${currentFrames.length} frames`, 'verify');
+
+  if (currentFrames.length === 0) {
+    speak('Camera not ready. Please try again.', true);
+    indoorHideCompare();
+    if (spinner) spinner.style.display = 'none';
+    return;
+  }
+
+  indoorShowCompare(refPhotos[0], currentFrames[0], 'Comparing with AI…', 'checking');
+
+  try {
+    const r = await fetch('/api/indoor-nav/verify-photo', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        reference_b64: refPhotos,
+        current_b64:   currentFrames,
+        context:       `turn ${idx + 1} ${turns[idx].direction}`,
+        context_type:  'turn'
+      })
+    });
+    const vd = await r.json();
+    if (spinner) spinner.style.display = 'none';
+
+    // ── CRITICAL: speak EXACTLY what the AI returned ──
+    const aiMessage  = vd.voice_response || vd.message || (vd.match ? 'Turn confirmed.' : 'Turn not confirmed.');
+    const matchState = (vd.match && !vd.skipped) ? 'match' : 'nomatch';
+
+    indoorShowCompare(refPhotos[0], currentFrames[0], aiMessage, matchState);
+    speak(aiMessage, true);  // speak the AI message directly, no override
+    indoorLog(`Verify turn ${idx + 1}: ${matchState} confidence=${vd.confidence} msg="${aiMessage}"`, 'verify');
+
+    if (vd.match && !vd.skipped) {
+      // Confirmed — advance index after AI finishes speaking
+      indoorLog(`Verify turn ${idx + 1}: MATCH — advancing to index ${idx + 1}`, 'verify');
+      setTimeout(() => {
+        _indoorSetIndex(idx + 1, 'image verification confirmed');
+      }, 1500);
+    }
+    // If no match — do nothing, just spoke the AI warning, user keeps walking
+  } catch (e) {
+    if (spinner) spinner.style.display = 'none';
+    speak('Verification failed. Please try again.', true);
+    indoorHideCompare();
+    indoorLog(`Verify turn ${idx + 1}: fetch error ${e.message}`, 'warn');
+  }
+}
+
+// "My Eye confirm destination"
+// SEARCH: async function indoorNavConfirmDestination()
+// REPLACE: entire function (ends before // "My Eye I don't understand")
+
+// SEARCH: async function indoorNavConfirmDestination()
+// REPLACE entire function until // "My Eye I don't understand"
+
+async function indoorNavConfirmDestination() {
+  if (!indoorNav.navRoute) {
+    speak('No active route.', true); return;
+  }
+  const dest  = indoorNav.navDestination;
+  const route = indoorNav.navRoute;
+
+  // Prefer list, fall back to single
+  let endRefList = route.end_image_b64_list || [];
+  if (endRefList.length === 0 && route.end_image_b64) {
+    endRefList = [route.end_image_b64];
+  }
+  indoorLog(`ConfirmDest: endRefList=${endRefList.length}`, 'verify');
+
+  if (endRefList.length === 0) {
+    // No destination photo saved — cannot confirm, tell user
+    speak(`No destination photo was saved for ${dest}. Say My Eye arrived to stop navigation manually.`, true);
+    indoorLog(`ConfirmDest: no end photos saved`, 'warn');
+    return;
+  }
+
+  speak(`Checking if you are at ${dest}.`, true);
+
+  const spinner = document.getElementById('indoorCompareSpinner');
+  if (spinner) spinner.style.display = 'inline';
+  indoorShowCompare(endRefList[0], '', 'Capturing current view…', 'checking');
+
+  if (!indoorNav.camActive) {
+    await indoorStartCam();
+    await wait(1500);
+  }
+
+  const currentFrames = await indoorCapture3Frames();
+  indoorLog(`ConfirmDest: captured ${currentFrames.length} frames`, 'verify');
+
+  if (!currentFrames.length) {
+    speak('Camera not ready. Please try again.', true);
+    if (spinner) spinner.style.display = 'none';
+    indoorHideCompare();
+    return;
+  }
+
+  indoorShowCompare(endRefList[0], currentFrames[0], 'Comparing destination…', 'checking');
+
+  try {
+    const r = await fetch('/api/indoor-nav/verify-photo', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        reference_b64: endRefList,
+        current_b64:   currentFrames,
+        context:       dest,
+        context_type:  'destination'
+      })
+    });
+    const vd = await r.json();
+    if (spinner) spinner.style.display = 'none';
+
+    // ── CRITICAL: speak EXACTLY what the AI returned ──
+    const aiMessage  = vd.voice_response || vd.message || (vd.match ? `You have arrived at ${dest}.` : `This does not look like ${dest}. Keep walking.`);
+    const matchState = (vd.match && !vd.skipped) ? 'match' : 'nomatch';
+
+    indoorShowCompare(endRefList[0], currentFrames[0], aiMessage, matchState);
+    speak(aiMessage, true);  // speak AI message directly
+    indoorLog(`ConfirmDest: ${matchState} confidence=${vd.confidence} msg="${aiMessage}"`, 'arrive');
+
+    if (vd.match && !vd.skipped) {
+      // ── ONLY stop navigation when AI confirms destination match ──
+      indoorLog(`Destination verified by AI — stopping navigation`, 'arrive');
+      setTimeout(() => {
+        if (indoorNav.navigating) {
+          _indoorStopTimer(); _indoorNavArrived();
+        }
+      }, 2000);
+    } else {
+      // No match — speak AI warning but navigation CONTINUES
+      indoorLog(`ConfirmDest: no match — navigation continues, user keeps walking`, 'warn');
+    }
+  } catch (e) {
+    if (spinner) spinner.style.display = 'none';
+    speak('Could not verify destination. Please try again.', true);
+    indoorHideCompare();
+    indoorLog(`ConfirmDest: fetch error ${e.message}`, 'warn');
+  }
+}
+// "My Eye I don't understand" — scan ALL turns, find best match, update index
+async function indoorNavIDontUnderstand() {
+  if (!indoorNav.navigating) return;
+  const turns = indoorNav.navTurns;
+  if (!turns || turns.length === 0) { speak('No turns in this route.', true); return; }
+
+  speak('Let me find where you are.', true);
+  indoorLog(`IDontUnderstand: started — index=${indoorNav.navIndex} turns=${turns.length}`, 'info');
+
+  // Camera retry
+  let currentFrame = indoorCaptureFrame();
+  indoorLog(`IDontUnderstand: camActive=${indoorNav.camActive} videoWidth=${document.getElementById('indoorNavVideo')?.videoWidth||0}`, 'info');
+  if (!currentFrame) {
+    speak('Camera restarting, please wait.', true);
+    await indoorStartCam();
+    await wait(2000);
+    currentFrame = indoorCaptureFrame();
+    if (!currentFrame) { speak('Camera not ready.', true); return; }
+  }
+  indoorLog(`IDontUnderstand: camera frame captured OK`, 'info');
+
+  let bestIdx   = -1;
+  let bestScore = 0;
+  const scoreMap = { high: 3, medium: 2, low: 1 };
+  const results  = []; // store all comparison results for display
+
+  for (let i = 0; i < turns.length; i++) {
+    const refPhotos = turns[i].turn_photo_b64_list || [];
+    indoorLog(`IDontUnderstand: turn ${i + 1} — refPhotos count=${refPhotos.length}`, 'verify');
+    if (refPhotos.length === 0) {
+      indoorLog(`IDontUnderstand: turn ${i + 1} SKIPPED — no photos stored`, 'warn');
+      results.push({ turnIdx: i, score: 0, match: false, conf: 'none', skipped: true, refPhoto: '' });
+      continue;
+    }
+
+    // Show comparison panel for this turn while checking
+    indoorShowCompare(
+      refPhotos[0],
+      currentFrame,
+      `Checking turn ${i + 1} of ${turns.length} (${turns[i].direction})…`,
+      'checking'
+    );
+
+    try {
+      const r = await fetch('/api/indoor-nav/verify-photo', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          reference_b64: refPhotos,
+          current_b64:   [currentFrame],
+          context:       `turn ${i + 1} ${turns[i].direction}`,
+          context_type:  'turn'
+        })
+      });
+      const vd    = await r.json();
+      const score = (vd.match && !vd.skipped) ? (scoreMap[vd.confidence] || 1) : 0;
+      indoorLog(`IDontUnderstand: turn ${i + 1} match=${vd.match} conf=${vd.confidence} score=${score}`, 'verify');
+      results.push({ turnIdx: i, score, match: vd.match, conf: vd.confidence, skipped: false, refPhoto: refPhotos[0] });
+      if (score > bestScore) { bestScore = score; bestIdx = i; }
+    } catch (e) {
+      indoorLog(`IDontUnderstand: turn ${i + 1} API error — ${e.message}`, 'warn');
+      results.push({ turnIdx: i, score: 0, match: false, conf: 'error', skipped: false, refPhoto: refPhotos[0] });
+    }
+  }
+
+  indoorLog(`IDontUnderstand: best match = turn ${bestIdx + 1} score=${bestScore}`, 'index');
+
+  // ── Show final visual summary ──────────────────────────────────
+  // Only show best match or failure in compare panel
+  if (bestIdx >= 0 && bestScore >= 3) {
+    // 100% confident match — show it
+    indoorShowCompare(
+      results[bestIdx].refPhoto,
+      currentFrame,
+      `✅ Turn ${bestIdx + 1} matched (${turns[bestIdx].direction}) — confidence: ${results[bestIdx].conf}`,
+      'match'
+    );
+  } else if (bestIdx >= 0) {
+    // Partial match — show it but warn
+    indoorShowCompare(
+      results[bestIdx].refPhoto,
+      currentFrame,
+      `⚠ Best guess: Turn ${bestIdx + 1} (${turns[bestIdx].direction}) — confidence: ${results[bestIdx].conf} — index NOT changed`,
+      'nomatch'
+    );
+  } else {
+    // No match at all
+    indoorShowCompare('', currentFrame, '❌ No turn matched — turn photos may not be saved', 'nomatch');
+  }
+
+  // Build result summary in log
+  results.forEach(res => {
+    const label = res.skipped ? 'SKIPPED' : `score=${res.score} conf=${res.conf}`;
+    indoorLog(`Summary: turn ${res.turnIdx + 1} — ${label}`, res.score >= 3 ? 'verify' : 'warn');
+  });
+
+  // ── Only update index if score is 3 (high confidence = 100% match) ──
+  if (bestScore < 3) {
+    const reason = bestIdx === -1
+      ? 'No turn photos saved — record route again with camera on'
+      : `Best match was turn ${bestIdx + 1} but confidence too low (${results[bestIdx].conf}) — index unchanged`;
+    speak(`Could not find your position. ${bestIdx === -1 ? 'Turn photos may not be saved.' : 'Not confident enough. Keep walking.'}`, true);
+    indoorLog(`IDontUnderstand: ${reason}`, 'warn');
+    return;
+  }
+
+  // ── High confidence match — update index ──
+  const found  = turns[bestIdx];
+  const isLast = bestIdx === turns.length - 1;
+  let   msg    = '';
+
+  if (isLast) {
+    const destSec = indoorNav.navLastStraightSec;
+    msg = `You are at turn ${bestIdx + 1}, ${found.direction}. Last turn. Walk ${destSec} seconds to ${indoorNav.navDestination}.`;
+  } else {
+    const nextTurn = turns[bestIdx + 1];
+    msg = `You are at turn ${bestIdx + 1}, ${found.direction}. Next: ${nextTurn.direction} after ${nextTurn.duration_sec} seconds.`;
+  }
+
+  speak(msg, true);
+  indoorLog(`IDontUnderstand: HIGH confidence match — setting index to ${bestIdx + 1}`, 'index');
+  _indoorSetIndex(bestIdx + 1, 'recovery via I dont understand');
+}
+// ════════════════════════════════════════════════════════════════
+// NAVIGATION END
+// ════════════════════════════════════════════════════════════════
+function stopIndoorNavigation() {
+  _indoorStopTimer();
+  indoorNav.navigating = false;
+  indoorNav.navRoute   = null;
+  indoorNav.navIndex   = 0;
+  indoorStopCam();
+  const np = document.getElementById('indoorNavTransPanel');
+  if (np) np.classList.remove('show');
+  indoorHideCompare();
+  indoorSetStatus('Navigation stopped');
+  setModeIndicator('System Ready');
+  speak('Navigation stopped.', true);
+  indoorLog('Navigation stopped by user', 'warn');
+}
+
+function _indoorNavArrived() {
+  _indoorStopTimer();
+  speak(`You have arrived at ${indoorNav.navDestination}!`, true);
+  indoorLog(`ARRIVED at ${indoorNav.navDestination}`, 'arrive');
+  indoorNav.navigating = false;
+  indoorNav.navRoute   = null;
+  indoorNav.navIndex   = 0;
+  setTimeout(() => {
+    indoorStopCam();
+    const np = document.getElementById('indoorNavTransPanel');
+    if (np) np.classList.remove('show');
+    indoorSetStatus('Arrived!');
+    setModeIndicator('System Ready');
+  }, 3000);
+}
+
+function indoorNavConfirmTurn(fromButton) {
+  if (!indoorNav.navigating) return;
+  indoorNavUserTurned();
+}
+
+// ════════════════════════════════════════════════════════════════
+// VOICE COMMAND HANDLER — all indoor nav commands
+// Navigation CONTINUES parallel to all commands
+// ════════════════════════════════════════════════════════════════
+async function handleIndoorNavVoiceCommand(command) {
+  try {
+    const lower = command.toLowerCase();
+
+    // ── Direct pattern matching ──────────────────────────────────
+
+    if (/don.?t understand|confused|samajh nahi|kahan hoon|where am i|lost/i.test(lower)) {
+      await indoorNavIDontUnderstand(); return true;
+    }
+    if (/verify (current )?turn|confirm (current )?turn/i.test(lower) && !/destination|arrive/i.test(lower)) {
+      await indoorNavVerifyCurrentTurn(); return true;
+    }
+    if (/verify destination|confirm destination|reached destination|at destination/i.test(lower)) {
+      await indoorNavConfirmDestination(); return true;
+    }
+    if (/what is next|what.?s next|next turn|aage kya|next step/i.test(lower)) {
+      indoorNavWhatIsNext(); return true;
+    }
+    if (/repeat direction|full route|all turn|complete route/i.test(lower)) {
+      indoorNavRepeatAll(); return true;
+    }
+    if (/remaining path|remaining turn|what.?s left|baaki/i.test(lower)) {
+      indoorNavRemainingPath(); return true;
+    }
+    if (/\brepeat\b|say again|dobara/i.test(lower) && !/direction|full|all/i.test(lower)) {
+      indoorNavRepeat(); return true;
+    }
+    if (/\bi arrived\b|\bmy eye arrived\b/i.test(lower) && !/destination reached/i.test(lower)) {
+      if (indoorNav.navigating) {
+        // FIX 4 + FIX 5: Manual arrival via voice pattern
+        indoorLog(`Navigation stopped: user manually said arrived at ${new Date().toLocaleTimeString()}`, 'arrive');
+        speak(`Navigation stopped. You have arrived at ${indoorNav.navDestination}.`, true);
+        _indoorStopTimer(); _indoorNavArrived(); return true;
+      }
+    }
+    if (/i am at start|i.?m at start|override|start here/i.test(lower)) {
+      if (indoorNav.navWaitingForStartOverride) {
+        indoorNav.navWaitingForStartOverride = false;
+        speak('Starting from your current position.', true);
+      }
+      return true;
+    }
+
+    // ── Backend processing for other commands ─────────────────────
+    const r = await fetch('/api/indoor-nav/process-voice-command', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        command,
+        mode: indoorNav.recording ? 'recording' : indoorNav.navigating ? 'navigating' : 'idle'
+      })
+    });
+    const d      = await r.json();
+    const action = d.action || 'unknown';
+    const dest   = d.destination || '';
+
+    switch (action) {
+      case 'start_recording':
+        if (dest) await indoorStartRecording(dest);
+        else speak(d.voice_response || 'Say the destination name.', true);
+        return true;
+
+      case 'turn_left':
+        if (indoorNav.recording) { await indoorRecTurn('left'); return true; }
+        if (indoorNav.navigating) { speak('Left noted.', true); return true; }
+        return false;
+
+      case 'turn_right':
+        if (indoorNav.recording) { await indoorRecTurn('right'); return true; }
+        if (indoorNav.navigating) { speak('Right noted.', true); return true; }
+        return false;
+
+      case 'turned':
+        if (indoorNav.navigating) { indoorNavUserTurned(); return true; }
+        return false;
+
+      case 'destination_reached':
+        if (indoorNav.recording)  { await indoorRecFinish(); return true; }
+        if (indoorNav.navigating) {
+          indoorLog(`Navigation stopped: user manually said arrived at ${new Date().toLocaleTimeString()}`, 'arrive');
+          _indoorStopTimer(); _indoorNavArrived(); return true;
+        }
+        return false;
+
+      case 'arrived':
+        if (indoorNav.navigating) {
+          // FIX 4 + FIX 5: Explicit "arrived" command — log it
+          indoorLog(`Navigation stopped: user manually said arrived at ${new Date().toLocaleTimeString()}`, 'arrive');
+          speak(`Navigation stopped. You have arrived at ${indoorNav.navDestination}.`, true);
+          _indoorStopTimer(); _indoorNavArrived(); return true;
+        }
+        return false;
+
+      case 'cancel_recording':
+        if (indoorNav.recording) { indoorRecCancel(); return true; }
+        speak(d.voice_response || 'Not recording.', true); return true;
+
+      case 'navigate_to':
+        if (dest) { await indoorStartNavigation(dest); return true; }
+        speak(d.voice_response || 'Where to?', true); return true;
+
+      case 'stop_navigation':
+        stopIndoorNavigation(); return true;
+
+      case 'override_start':
+        indoorNav.navWaitingForStartOverride = false;
+        speak('Continuing from here.', true); return true;
+
+      case 'list_routes':
+        speak(d.voice_response || 'Loading routes.', true);
+        indoorLoadRoutes(); return true;
+
+      default:
+        if (d.voice_response) speak(d.voice_response, true);
+        return action !== 'unknown';
+    }
+  } catch (e) {
+    console.warn('[IndoorNav] voice command error:', e);
+    return false;
+  }
+}
+
+// ════════════════════════════════════════════════════════════════
+// INTERCEPT processVoiceCommand — indoor nav gets first priority
+// Navigation NEVER stops for any command unless "stop navigation"
+// ════════════════════════════════════════════════════════════════
+const _origProcessVoiceCommand = processVoiceCommand;
+processVoiceCommand = async function (command, isAcc = false) {
+  const lower = command.toLowerCase();
+
+  // During navigation — ALL commands go to indoor handler FIRST
+  if (indoorNav.navigating) {
+    const handled = await handleIndoorNavVoiceCommand(command);
+    if (handled) return;
+  }
+
+  // During recording — turn/destination commands go to indoor handler
+  const indoorKeywords = [
+    'turn left', 'turn right', 'destination reached',
+    'record route', 'navigate to', 'go to', 'stop navigation',
+    'list routes', 'my routes', 'i am at start', "i'm at start",
+    'override', 'turned', 'i turned', 'arrived',
+    'verify', 'confirm turn', 'what is next', 'remaining path',
+    'repeat direction', "i don't understand", 'confused'
+  ];
+  const mightBeIndoor = indoorKeywords.some(kw => lower.includes(kw));
+  if (indoorNav.recording || mightBeIndoor) {
+    const handled = await handleIndoorNavVoiceCommand(command);
+    if (handled) return;
+  }
+
+  return _origProcessVoiceCommand(command, isAcc);
+};
+
+// ════════════════════════════════════════════════════════════════
+// ACCESSIBILITY COMMANDS HELP TEXT
+// ════════════════════════════════════════════════════════════════
+function _indoorAddAccessibilityCmds() {
+  const wc = document.querySelector('.wake-cmds');
+  if (!wc || document.getElementById('indoorNavCmdsAdded')) return;
+  const div = document.createElement('div');
+  div.id = 'indoorNavCmdsAdded';
+  div.style.cssText = 'margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.08)';
+  div.innerHTML = (
+    '<b style="color:var(--accent)">🏠 Indoor Navigation:</b><br>' +
+    '🔴 <strong>"My Eye record route to bathroom"</strong><br>' +
+    '↰ <strong>"My Eye turn left / turn right"</strong><br>' +
+    '✓ <strong>"My Eye destination reached"</strong><br>' +
+    '🧭 <strong>"My Eye go to bathroom"</strong><br>' +
+    '✅ <strong>"My Eye turned"</strong> — completed turn, start next segment<br>' +
+    '🔁 <strong>"My Eye repeat"</strong> — current turn only<br>' +
+    '📋 <strong>"My Eye repeat directions"</strong> — full remaining route<br>' +
+    '➡️ <strong>"My Eye what is next"</strong> — next turn after this<br>' +
+    '📸 <strong>"My Eye verify current turn"</strong> — compare camera to stored photo<br>' +
+    '🏁 <strong>"My Eye confirm destination"</strong> — compare camera to end photo<br>' +
+    '❓ <strong>"My Eye I don\'t understand"</strong> — find your position<br>' +
+    '🛑 <strong>"My Eye stop navigation"</strong>'
+  );
+  wc.appendChild(div);
+}
+
+const _origSetNavMode = setNavMode;
+setNavMode = function (mode) {
+  _origSetNavMode(mode);
+  if (mode === 'indoor') {
+    indoorLoadRoutes();
+    _indoorAddAccessibilityCmds();
+    indoorSetStatus('Say: My Eye record route to [destination]');
+  }
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(_indoorAddAccessibilityCmds, 2000);
+}, { once: true });
+
 </script>
 </body>
 </html>
